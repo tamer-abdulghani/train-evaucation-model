@@ -1,17 +1,28 @@
 breed [passengers passenger]
 breed [staff-members staff-member]
-breed [fire-tiles a-fire-tile]
-breed [smoke-tiles a-smoke-tile]
+breed [fire-spots a-fire-spot]
+breed [fire-distinguishers a-fire-distinguisher]
 
 passengers-own [
   in-seat?
-  safe?
+  safe-passanger?
+  health-passenger?
+]
+
+staff-members-own [
+  busy-staff?
+  safe-staff?
+  health-staff?
 ]
 
 patches-own[
-  accessible?
-  busy?
-  hasFire?
+  busy-patche?
+  accessible-patche?
+  withFire-patche?
+]
+
+fire-distinguishers-own [
+  taken?
 ]
 
 to setup
@@ -34,25 +45,44 @@ end
 to initialize-train
   import-pcolors "images/train.png"
   ask patches [
-    if pcolor = black
-    [
-      set accessible? true
-    ]
-    if pcolor > 23 and pcolor < 28 [
-    set pcolor cyan
-    ]
+  if pcolor = 65
+    [set pcolor cyan]
+  if pcolor = 0
+    [set pcolor black]
+  if pcolor = 14.9
+    [set pcolor red]
+  if pcolor = 105
+    [set pcolor blue]
+  if pcolor = 64.3
+    [set pcolor green]
+  if pcolor = 9.9
+    [set pcolor white]
+  if pcolor = 137.1
+    [set pcolor pink]
+  if pcolor = 137.1
+    [set pcolor sky]
+  if pcolor = 44.3
+    [set pcolor lime]
   ]
 
+    ask patches [
+    ifelse pcolor = white and pcolor = cyan and pcolor = pink
+    [
+      set accessible-patche? true
+    ]
+    [ set accessible-patche? false
+    ]
+  ]
 end
 
 to initialize-passengers
 
-  create-passengers 15 [
-    set shape "person"
-    set color yellow
+  create-passengers  passenger-count[
+    set shape "person business"
+    set color brown
     setxy random-xcor random-ycor
     set size 1.5
-    set safe? false
+    set safe-passanger? false
     move-to one-of patches with [ pcolor = blue ]
   ]
 
@@ -66,24 +96,24 @@ to initialize-passengers
 end
 
 to initialize-staff
-  create-staff-members 6 [
-    set shape "person"
+  create-staff-members staff-count [
+    set shape "person service"
     set color red
     setxy random-xcor random-ycor
     set size 1.5
-    move-to one-of patches with [ pcolor > 40 and pcolor < 70 ]
+    move-to one-of patches with [pcolor = green]
   ]
 end
 
 to initialize-fire
-ask n-of 1 patches with [pcolor = black or pcolor = white]
+ask n-of fire-count patches with [pcolor = black or pcolor = white]
   [
-      sprout-fire-tiles 1
+      sprout-fire-spots 1
       [
       set shape "fire"
       set color red
       set size 2
-      set hasFire? true
+      set withFire-patche? true
       ]
   ]
 end
@@ -92,12 +122,12 @@ end
 to spread-fire
   ask n-of 2 patches with [pcolor = white or pcolor = grey]
   [
-    if any? neighbors with [count fire-tiles-here > 0] [
-      sprout-fire-tiles 1 [
+    if any? neighbors with [count fire-spots-here > 0] [
+      sprout-fire-spots 1 [
         set shape "fire"
         set color red
         set size 2
-        set hasFire? true
+        set withFire-patche? true
       ]
     ]
   ]
@@ -105,7 +135,7 @@ end
 
 
 to spread-smoke
-  ask fire-tiles [
+  ask fire-spots [
     ask neighbors with [pcolor = white and pcolor != grey][
         set pcolor grey
       ]
@@ -114,14 +144,14 @@ to spread-smoke
 end
 
 to move-passengers
-  ask passengers with [safe? = false] [
+  ask passengers with [safe-passanger? = false] [
   ifelse (([pcolor] of patch-at-heading-and-distance -180 1 != cyan))
     [
           forward 0.1
     ]
     [
       set color green
-      set safe? true
+      set safe-passanger? true
     ]
     ]
 
@@ -156,10 +186,10 @@ ticks
 30.0
 
 BUTTON
-31
-71
-94
-104
+28
+12
+91
+45
 setup
 setup
 NIL
@@ -173,10 +203,10 @@ NIL
 1
 
 BUTTON
-117
-73
-180
-106
+122
+12
+185
+45
 go
 go
 T
@@ -188,6 +218,66 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+24
+63
+196
+96
+passenger-count
+passenger-count
+0
+48
+48.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+24
+109
+196
+142
+staff-count
+staff-count
+0
+4
+4.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+24
+159
+196
+192
+fire-count
+fire-count
+1
+3
+1.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+24
+207
+196
+240
+panic-rate
+panic-rate
+0
+100
+100.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -421,6 +511,43 @@ Polygon -7500403 true true 105 90 120 195 90 285 105 300 135 300 150 225 165 300
 Rectangle -7500403 true true 127 79 172 94
 Polygon -7500403 true true 195 90 240 150 225 180 165 105
 Polygon -7500403 true true 105 90 60 150 75 180 135 105
+
+person business
+false
+0
+Rectangle -1 true false 120 90 180 180
+Polygon -13345367 true false 135 90 150 105 135 180 150 195 165 180 150 105 165 90
+Polygon -7500403 true true 120 90 105 90 60 195 90 210 116 154 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 183 153 210 210 240 195 195 90 180 90 150 165
+Circle -7500403 true true 110 5 80
+Rectangle -7500403 true true 127 76 172 91
+Line -16777216 false 172 90 161 94
+Line -16777216 false 128 90 139 94
+Polygon -13345367 true false 195 225 195 300 270 270 270 195
+Rectangle -13791810 true false 180 225 195 300
+Polygon -14835848 true false 180 226 195 226 270 196 255 196
+Polygon -13345367 true false 209 202 209 216 244 202 243 188
+Line -16777216 false 180 90 150 165
+Line -16777216 false 120 90 150 165
+
+person service
+false
+0
+Polygon -7500403 true true 180 195 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285
+Polygon -1 true false 120 90 105 90 60 195 90 210 120 150 120 195 180 195 180 150 210 210 240 195 195 90 180 90 165 105 150 165 135 105 120 90
+Polygon -1 true false 123 90 149 141 177 90
+Rectangle -7500403 true true 123 76 176 92
+Circle -7500403 true true 110 5 80
+Line -13345367 false 121 90 194 90
+Line -16777216 false 148 143 150 196
+Rectangle -16777216 true false 116 186 182 198
+Circle -1 true false 152 143 9
+Circle -1 true false 152 166 9
+Rectangle -16777216 true false 179 164 183 186
+Polygon -2674135 true false 180 90 195 90 183 160 180 195 150 195 150 135 180 90
+Polygon -2674135 true false 120 90 105 90 114 161 120 195 150 195 150 135 120 90
+Polygon -2674135 true false 155 91 128 77 128 101
+Rectangle -16777216 true false 118 129 141 140
+Polygon -2674135 true false 145 91 172 77 172 101
 
 plant
 false
