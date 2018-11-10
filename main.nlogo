@@ -2,11 +2,13 @@ breed [passengers passenger]
 breed [staff-members staff-member]
 breed [fire-spots a-fire-spot]
 breed [fire-distinguishers a-fire-distinguisher]
+globals [ exit-1-x exit-1-y exit-2-x exit-2-y exit-3-x exit-3-y exit-4-x exit-4-y ]
 
 passengers-own [
   in-seat?
-  safe-passanger?
+  safe-passenger?
   health-passenger?
+  target-exit
 ]
 
 staff-members-own [
@@ -31,6 +33,8 @@ to setup
   initialize-passengers
   initialize-staff
   initialize-fire
+  initialize-exists
+  set-target-exists
   reset-ticks
 end
 
@@ -45,7 +49,7 @@ end
 to initialize-train
   import-pcolors "images/train.png"
   ask patches [
-  if pcolor = 65
+  if pcolor = 84.9
     [set pcolor cyan]
   if pcolor = 0
     [set pcolor black]
@@ -82,7 +86,10 @@ to initialize-passengers
     set color brown
     setxy random-xcor random-ycor
     set size 1.5
-    set safe-passanger? false
+    set safe-passenger? false
+    set in-seat? true
+    set target-exit ""
+    set color yellow
     move-to one-of patches with [ pcolor = blue ]
   ]
 
@@ -118,6 +125,19 @@ ask n-of fire-count patches with [pcolor = black or pcolor = white]
   ]
 end
 
+to initialize-exists
+  set exit-1-x 14
+  set exit-1-y 9
+
+  set exit-2-x 14
+  set exit-2-y -7
+
+  set exit-3-x -14
+  set exit-3-y 9
+
+  set exit-4-x -14
+  set exit-4-y -7
+end
 
 to spread-fire
   ask n-of 2 patches with [pcolor = white or pcolor = grey]
@@ -143,19 +163,134 @@ to spread-smoke
 
 end
 
+to set-target-exists
+  ask passengers [
+    if xcor > 0 and ycor > 0
+    [
+      set target-exit "exit 1"
+    ]
+
+    if xcor > 0 and ycor < 0
+    [
+      set target-exit "exit 2"
+    ]
+
+    if xcor < 0 and ycor > 0
+    [
+      set target-exit "exit 3"
+    ]
+
+    if xcor < 0 and ycor < 0
+    [
+      set target-exit "exit 4"
+    ]
+  ]
+end
+
+
 to move-passengers
-  ask passengers with [safe-passanger? = false] [
-  ifelse (([pcolor] of patch-at-heading-and-distance -180 1 != cyan))
+  ask passengers with [safe-passenger? = false]
+  [
+    ifelse ( ycor != 1 or ycor != -1 ) and (in-seat? = true)
     [
-          forward 0.1
+      go-to-main-path
     ]
     [
-      set color green
-      set safe-passanger? true
+      go-toward-exits
     ]
-    ]
+  ]
+end
 
 
+to go-to-main-path
+  if target-exit = "exit 1" or target-exit = "exit 3"
+      [
+        facexy xcor 1
+        ifelse (ycor > 1)
+        [forward 0.1]
+        [set in-seat? false]
+      ]
+
+  if target-exit = "exit 2" or target-exit = "exit 4"
+      [
+        facexy xcor -1
+        ifelse (ycor < -1)
+        [forward 0.1]
+        [set in-seat? false]
+      ]
+end
+
+to go-toward-exits
+  if target-exit = "exit 1"  or target-exit = "exit 2"
+   [
+     facexy 10 1
+     ifelse xcor < 10
+      [
+        forward 0.1
+      ]
+      [
+        if target-exit = "exit 1"
+        [
+          facexy exit-1-x exit-1-y
+          ifelse xcor <= exit-1-x and ycor <= exit-1-y
+          [ forward 0.1 ]
+          [
+            set color green
+            let cyan-patches (patches in-radius 4 with [pcolor = cyan] )
+            move-to one-of cyan-patches
+            set safe-passenger? true
+          ]
+        ]
+        if target-exit = "exit 2"
+        [
+          facexy exit-2-x exit-2-y
+          ifelse xcor <= exit-2-x and ycor >= exit-2-y
+          [ forward 0.1 ]
+          [
+            set color green
+            let cyan-patches (patches in-radius 4 with [pcolor = cyan] )
+            move-to one-of cyan-patches
+            set safe-passenger? true
+          ]
+        ]
+      ]
+  ]
+
+  if target-exit = "exit 3"  or target-exit = "exit 4"
+  [
+    facexy -10 1
+    ifelse xcor > -10
+    [
+      forward 0.1
+    ]
+    [
+      if target-exit = "exit 3"
+      [
+        facexy exit-3-x exit-3-y
+        ifelse xcor >= exit-3-x and ycor <= exit-3-y
+          [ forward 0.1 ]
+          [
+            set color green
+            let cyan-patches (patches in-radius 4 with [pcolor = cyan] )
+            move-to one-of cyan-patches
+            set safe-passenger? true
+          ]
+      ]
+
+      if target-exit = "exit 4"
+      [
+        facexy exit-4-x exit-4-y
+        ifelse xcor >= exit-4-x and ycor >= exit-4-y
+          [ forward 0.1 ]
+          [
+            set color green
+            let cyan-patches (patches in-radius 4 with [pcolor = cyan] )
+            move-to one-of cyan-patches
+            set safe-passenger? true
+          ]
+      ]
+    ]
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
