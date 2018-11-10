@@ -1,18 +1,7 @@
-1. passengers setting on each other
-2. change all variable name related to fire
-3. Fix patches attributes: (accessible, safe)
-4. Fix passengers attributes: (in-seat, safe, health)
-5. Fix staff attributes: (safe, health, busy)
-6. Fix fire distinguisher attribute (taken)
-7. Update train image
-
-MAIN THING: learn how to move agents towords something
-
 Extra:
 =========
-Step by step simulation. refer to HEX CELL EXAMPLE.
-One passenger per patch + Face target: refer to One Turtle Per Patch Example
-Look AHEAD example.
+Step by step simulation. refer to HEX CELL EXAMPLE.	? 
+Look AHEAD example.	? 
 
 optional:
 1. set shape to cloud
@@ -24,13 +13,21 @@ optional:
 ========================
 What to do?
 Moving passenger function:
-	- They should move randomly to the safe area which is Cyan.
-	- They should NOT go into fire or grey square or Blue Seats or Black or red or green.
-	- They should NOT go toward fire
-	- They should try to find the exits and closest doors (Either color or Coodinates)
-	- If fire burn passengers or staff, they are died.
-	- people who touch the first or grey, their health attribute will be decreased. 
+	- They should move (in path) to the safe area which is Cyan.		OK 
+	- They should NOT go into fire or grey square or Blue Seats or Black or red or green.	? 
+	- They should NOT go toward fire	? 
+	- They should try to find the exits and closest doors (Either color or Coodinates)		OK 
+	- If fire burn passengers or staff, they are died.	? 
+	- people who touch the first or grey, their health attribute will be decreased. 	?
+========================
+Moving staff function:
+	- Staff should move and pick one fire-distinguisher 
+	- They go towards fire and stop the fire by changing the color to white.
+========================
+Add Panic rate to passengers:
+	- Some of them will move randomly without target and others will move in good path to targets.
+=======================
 
-Update parameters and output information:
-	- Nb of passengers and staff.
-	- Intensity of fire (1 to 8)
+
+
+
