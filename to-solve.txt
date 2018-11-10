@@ -8,6 +8,12 @@
 
 MAIN THING: learn how to move agents towords something
 
+Extra:
+=========
+Step by step simulation. refer to HEX CELL EXAMPLE.
+One passenger per patch + Face target: refer to One Turtle Per Patch Example
+Look AHEAD example.
+
 optional:
 1. set shape to cloud
    sprout-smoke-tiles 1 [

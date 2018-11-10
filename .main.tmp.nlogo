@@ -47,7 +47,7 @@ end
 
 to initialize-passengers
 
-  create-passengers 15 [
+  create-passengers  [
     set shape "person"
     set color yellow
     setxy random-xcor random-ycor
