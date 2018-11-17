@@ -1,6 +1,7 @@
 breed [passengers passenger]
 breed [staff-members staff-member]
 breed [fire-spots a-fire-spot]
+breed [smoke-spots a-smoke-spot]
 breed [fire-distinguishers a-fire-distinguisher]
 globals [ exit-1-x exit-1-y exit-2-x exit-2-y exit-3-x exit-3-y exit-4-x exit-4-y ]
 
@@ -31,10 +32,7 @@ to setup
   __clear-all-and-reset-ticks
   initialize-train
   initialize-passengers
-  initialize-staff
   initialize-fire
-  initialize-exists
-  set-target-exists
   reset-ticks
 end
 
@@ -46,8 +44,9 @@ to go
   tick
 end
 
+
 to initialize-train
-  import-pcolors "images/train.png"
+  import-pcolors "train525.png"
   ask patches [
   if pcolor = 84.9
     [set pcolor cyan]
@@ -67,86 +66,85 @@ to initialize-train
     [set pcolor sky]
   if pcolor = 44.3
     [set pcolor lime]
+  if pcolor = 105
+    [set pcolor blue]
   ]
 
-    ask patches [
+  ask patches
+  [
     ifelse pcolor = white and pcolor = cyan and pcolor = pink
     [
       set accessible-patche? true
     ]
-    [ set accessible-patche? false
+    [
+      set accessible-patche? false
     ]
   ]
 end
 
 to initialize-passengers
-
-  create-passengers  passenger-count[
-    set shape "person business"
+  create-passengers 10 [
+    set shape "person"
     set color brown
     setxy random-xcor random-ycor
-    set size 1.5
+    set size 18
     set safe-passenger? false
     set in-seat? true
     set target-exit ""
-    set color yellow
+    set color red
     move-to one-of patches with [ pcolor = blue ]
   ]
 
-   ask passengers [
-    let empty-seats patches with [ not any? turtles-here and pcolor = blue ]
+  ask passengers [
+    let empty-seats patches with [ pcolor = blue ] with [not any? turtles-here ]
     if any? empty-seats
-      [ let target one-of empty-seats
-        face target
-        move-to target ]
+    [
+      let target one-of empty-seats
+      face target
+      move-to target
+      ask patches in-radius 6 [ set pcolor white ]
+    ]
   ]
 end
 
-to initialize-staff
-  create-staff-members staff-count [
-    set shape "person service"
-    set color red
-    setxy random-xcor random-ycor
-    set size 1.5
-    move-to one-of patches with [pcolor = green]
-  ]
-end
 
 to initialize-fire
-ask n-of fire-count patches with [pcolor = black or pcolor = white]
+  ask n-of 1 patches with [pcolor = black or pcolor = white] with [pycor < 45 and pycor > -45 ]
   [
       sprout-fire-spots 1
       [
       set shape "fire"
       set color red
-      set size 2
+      set size 20
       set withFire-patche? true
       ]
   ]
 end
 
+
 to initialize-exists
-  set exit-1-x 14
-  set exit-1-y 9
+  set exit-3-x -184
+  set exit-3-y 50
 
-  set exit-2-x 14
-  set exit-2-y -7
+  set exit-1-x 143
+  set exit-1-y 50
 
-  set exit-3-x -14
-  set exit-3-y 9
+  set exit-4-x -184
+  set exit-4-y -50
 
-  set exit-4-x -14
-  set exit-4-y -7
+  set exit-2-x 143
+  set exit-2-y -50
 end
 
+
 to spread-fire
-  ask n-of 2 patches with [pcolor = white or pcolor = grey]
+  ask n-of 2 patches
   [
-    if any? neighbors with [count fire-spots-here > 0] [
+    if any? patches in-radius 16 with [count fire-spots-here > 0] with [pycor > -45 and pycor < 45] [
       sprout-fire-spots 1 [
         set shape "fire"
         set color red
-        set size 2
+        set size 20
         set withFire-patche? true
       ]
     ]
@@ -156,11 +154,10 @@ end
 
 to spread-smoke
   ask fire-spots [
-    ask neighbors with [pcolor = white and pcolor != grey][
-        set pcolor grey
-      ]
+    ask patches in-radius 10 [
+       set pcolor grey
     ]
-
+  ]
 end
 
 to set-target-exists
@@ -191,13 +188,12 @@ end
 to move-passengers
   ask passengers with [safe-passenger? = false]
   [
-    ifelse ( ycor != 1 or ycor != -1 ) and (in-seat? = true)
-    [
+    ;;forward 0.1
+
       go-to-main-path
-    ]
-    [
+
       go-toward-exits
-    ]
+
   ]
 end
 
@@ -207,7 +203,7 @@ to go-to-main-path
       [
         facexy xcor 1
         ifelse (ycor > 1)
-        [forward 0.1]
+        [forward 1]
         [set in-seat? false]
       ]
 
@@ -215,7 +211,7 @@ to go-to-main-path
       [
         facexy xcor -1
         ifelse (ycor < -1)
-        [forward 0.1]
+        [forward 1]
         [set in-seat? false]
       ]
 end
@@ -296,11 +292,11 @@ end
 GRAPHICS-WINDOW
 210
 10
-647
-448
+1419
+420
 -1
 -1
-13.0
+1.0
 1
 10
 1
@@ -310,21 +306,21 @@ GRAPHICS-WINDOW
 1
 1
 1
--16
-16
--16
-16
-1
-1
+-600
+600
+-200
+200
+0
+0
 1
 ticks
 30.0
 
 BUTTON
-28
-12
-91
-45
+83
+65
+146
+98
 setup
 setup
 NIL
@@ -338,10 +334,10 @@ NIL
 1
 
 BUTTON
-122
-12
-185
-45
+109
+121
+172
+154
 go
 go
 T
@@ -353,66 +349,6 @@ NIL
 NIL
 NIL
 1
-
-SLIDER
-24
-63
-196
-96
-passenger-count
-passenger-count
-0
-48
-48.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-24
-109
-196
-142
-staff-count
-staff-count
-0
-4
-4.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-24
-159
-196
-192
-fire-count
-fire-count
-1
-3
-1.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-24
-207
-196
-240
-panic-rate
-panic-rate
-0
-100
-100.0
-1
-1
-NIL
-HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -646,43 +582,6 @@ Polygon -7500403 true true 105 90 120 195 90 285 105 300 135 300 150 225 165 300
 Rectangle -7500403 true true 127 79 172 94
 Polygon -7500403 true true 195 90 240 150 225 180 165 105
 Polygon -7500403 true true 105 90 60 150 75 180 135 105
-
-person business
-false
-0
-Rectangle -1 true false 120 90 180 180
-Polygon -13345367 true false 135 90 150 105 135 180 150 195 165 180 150 105 165 90
-Polygon -7500403 true true 120 90 105 90 60 195 90 210 116 154 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 183 153 210 210 240 195 195 90 180 90 150 165
-Circle -7500403 true true 110 5 80
-Rectangle -7500403 true true 127 76 172 91
-Line -16777216 false 172 90 161 94
-Line -16777216 false 128 90 139 94
-Polygon -13345367 true false 195 225 195 300 270 270 270 195
-Rectangle -13791810 true false 180 225 195 300
-Polygon -14835848 true false 180 226 195 226 270 196 255 196
-Polygon -13345367 true false 209 202 209 216 244 202 243 188
-Line -16777216 false 180 90 150 165
-Line -16777216 false 120 90 150 165
-
-person service
-false
-0
-Polygon -7500403 true true 180 195 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285
-Polygon -1 true false 120 90 105 90 60 195 90 210 120 150 120 195 180 195 180 150 210 210 240 195 195 90 180 90 165 105 150 165 135 105 120 90
-Polygon -1 true false 123 90 149 141 177 90
-Rectangle -7500403 true true 123 76 176 92
-Circle -7500403 true true 110 5 80
-Line -13345367 false 121 90 194 90
-Line -16777216 false 148 143 150 196
-Rectangle -16777216 true false 116 186 182 198
-Circle -1 true false 152 143 9
-Circle -1 true false 152 166 9
-Rectangle -16777216 true false 179 164 183 186
-Polygon -2674135 true false 180 90 195 90 183 160 180 195 150 195 150 135 180 90
-Polygon -2674135 true false 120 90 105 90 114 161 120 195 150 195 150 135 120 90
-Polygon -2674135 true false 155 91 128 77 128 101
-Rectangle -16777216 true false 118 129 141 140
-Polygon -2674135 true false 145 91 172 77 172 101
 
 plant
 false
