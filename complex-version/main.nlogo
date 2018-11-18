@@ -4,7 +4,7 @@ breed [drivers driver]
 breed [fire-spots a-fire-spot]
 breed [smoke-spots a-smoke-spot]
 breed [fire-distinguishers a-fire-distinguisher]
-globals [ exit-1-x exit-1-y exit-2-x exit-2-y exit-3-x exit-3-y exit-4-x exit-4-y ]
+globals [ exit1 exit2 exit3 exit4 exit5 exit6 exit7 exit8 exits-list]
 
 passengers-own [
   in-seat?
@@ -35,6 +35,8 @@ to setup
   initialize-passengers
   initialize-staff
   initialize-fire
+  initialize-exists
+  set-target-exists
   reset-ticks
 end
 
@@ -64,7 +66,7 @@ to initialize-train
     [set pcolor pink]
   if pcolor = 126
     [set pcolor magenta]
-
+  set withFire-patche? false
   ]
 
   ask patches
@@ -139,17 +141,16 @@ end
 
 
 to initialize-exists
-  set exit-3-x -184
-  set exit-3-y 50
+  set exit1 patch -300 50
+  set exit2 patch -175 50
+  set exit3 patch 150 50
+  set exit4 patch 280 50
+  set exit5 patch -300 -50
+  set exit6 patch -175 -50
+  set exit7 patch 150 -50
+  set exit8 patch 280 -50
 
-  set exit-1-x 143
-  set exit-1-y 50
-
-  set exit-4-x -184
-  set exit-4-y -50
-
-  set exit-2-x 143
-  set exit-2-y -50
+  set exits-list ( list exit1 exit2 exit3 exit4 exit5 exit6 exit7 exit8 )
 end
 
 
@@ -177,129 +178,113 @@ to spread-smoke
 end
 
 to set-target-exists
-  ask passengers [
-    if xcor > 0 and ycor > 0
-    [
-      set target-exit "exit 1"
-    ]
-
-    if xcor > 0 and ycor < 0
-    [
-      set target-exit "exit 2"
-    ]
-
-    if xcor < 0 and ycor > 0
-    [
-      set target-exit "exit 3"
-    ]
-
-    if xcor < 0 and ycor < 0
-    [
-      set target-exit "exit 4"
-    ]
+   ask passengers [
+    let target min-one-of (patch-set exits-list) [distance myself]
+    set target-exit target
   ]
 end
-
 
 to move-passengers
   ask passengers with [safe-passenger? = false]
   [
-    ;;forward 0.1
+    let fire-around-me patches in-radius 16 with [withFire-patche?]
+    if any? fire-around-me
+    [
+      set color black
+      set safe-passenger? true
+      ;; change exit or closest and get fare away from fire :)
+      ;; random-faster momvement
+      ;; decrease health
+    ]
 
+    ifelse ( ycor != 1 or ycor != -1 ) and (in-seat? = true)
+    [
       go-to-main-path
-
-      go-toward-exits
-
+    ]
+    [
+      move-to-exit
+    ]
   ]
 end
 
 
 to go-to-main-path
-  if target-exit = "exit 1" or target-exit = "exit 3"
+
+  if ( member? target-exit ( patch-set exit1 exit2 exit3 exit4 ) )
       [
-        facexy xcor 1
+        let center patch xcor 1
+        face center
         ifelse (ycor > 1)
-        [forward 1]
-        [set in-seat? false]
+        [
+          forward 0.05
+        ]
+        [
+          set in-seat? false
+        ]
       ]
 
-  if target-exit = "exit 2" or target-exit = "exit 4"
+  if ( member? target-exit ( patch-set exit5 exit6 exit7 exit8 ) )
       [
-        facexy xcor -1
+        let center patch xcor -1
+        face center
         ifelse (ycor < -1)
-        [forward 1]
-        [set in-seat? false]
+        [
+          forward 0.05
+        ]
+        [
+          set in-seat? false
+        ]
       ]
 end
 
-to go-toward-exits
-  if target-exit = "exit 1"  or target-exit = "exit 2"
-   [
-     facexy 10 1
-     ifelse xcor < 10
-      [
-        forward 0.1
-      ]
-      [
-        if target-exit = "exit 1"
-        [
-          facexy exit-1-x exit-1-y
-          ifelse xcor <= exit-1-x and ycor <= exit-1-y
-          [ forward 0.1 ]
-          [
-            set color green
-            let cyan-patches (patches in-radius 4 with [pcolor = cyan] )
-            move-to one-of cyan-patches
-            set safe-passenger? true
-          ]
-        ]
-        if target-exit = "exit 2"
-        [
-          facexy exit-2-x exit-2-y
-          ifelse xcor <= exit-2-x and ycor >= exit-2-y
-          [ forward 0.1 ]
-          [
-            set color green
-            let cyan-patches (patches in-radius 4 with [pcolor = cyan] )
-            move-to one-of cyan-patches
-            set safe-passenger? true
-          ]
-        ]
-      ]
-  ]
-
-  if target-exit = "exit 3"  or target-exit = "exit 4"
+to move-to-exit
+  ;; If the exit is on the LEFT of agent,
+  ;; then the agent must move to left until his XCOR greater by margin=20 than EXIT-X
+  ;; then he should move UP or DOWN toward the exit.
+  ifelse (xcor > ([pxcor] of target-exit))
   [
-    facexy -10 1
-    ifelse xcor > -10
+    let target-x ([pxcor] of target-exit)
+    facexy target-x 1
+    ifelse (xcor > target-x + 20)
     [
       forward 0.1
     ]
     [
-      if target-exit = "exit 3"
+      face target-exit
+      ifelse ( (round xcor) != ([pxcor] of target-exit))
       [
-        facexy exit-3-x exit-3-y
-        ifelse xcor >= exit-3-x and ycor <= exit-3-y
-          [ forward 0.1 ]
-          [
-            set color green
-            let cyan-patches (patches in-radius 4 with [pcolor = cyan] )
-            move-to one-of cyan-patches
-            set safe-passenger? true
-          ]
+        forward 0.1
+      ]
+      [
+        set color green
+        move-to one-of patches in-radius 30 with [pcolor = cyan]
+        set safe-passenger? true
+
       ]
 
-      if target-exit = "exit 4"
+    ]
+  ]
+  ;; ELSE, if the exit on the RIGHT of agent,
+  ;; then agent must move to right until his XCOR smaller by margin=20 than EXIT-X
+  ;; then he should move UP or DOWN toward the exit
+  [
+    let target-x ([pxcor] of target-exit)
+    facexy target-x 1
+    ifelse (xcor < target-x - 20)
+    [
+      forward 0.1
+    ]
+    [
+      face target-exit
+      ifelse ( (round xcor) != ([pxcor] of target-exit))
       [
-        facexy exit-4-x exit-4-y
-        ifelse xcor >= exit-4-x and ycor >= exit-4-y
-          [ forward 0.1 ]
-          [
-            set color green
-            let cyan-patches (patches in-radius 4 with [pcolor = cyan] )
-            move-to one-of cyan-patches
-            set safe-passenger? true
-          ]
+        forward 0.1
+      ]
+      [
+        set color green
+        move-to one-of patches in-radius 30 with [pcolor = cyan]
+        set safe-passenger? true
+
       ]
     ]
   ]
@@ -405,7 +390,7 @@ drivers-count
 drivers-count
 0
 2
-0.0
+1.0
 1
 1
 NIL
@@ -420,7 +405,7 @@ fire-count
 fire-count
 0
 3
-0.0
+1.0
 1
 1
 NIL
@@ -435,7 +420,7 @@ panic-rate
 panic-rate
 0
 100
-0.0
+5.0
 1
 1
 NIL
