@@ -1,4 +1,5 @@
 breed [passengers passenger]
+breed [panic-passengers panic-passenger]
 breed [staff-members staff-member]
 breed [drivers driver]
 breed [fire-spots a-fire-spot]
@@ -11,6 +12,15 @@ passengers-own [
   safe-passenger?
   health-passenger?
   target-exit
+  my-exits-list
+]
+
+panic-passengers-own [
+  in-seat?
+  safe-passenger?
+  health-passenger?
+  target-exit
+  my-exits-list
 ]
 
 staff-members-own [
@@ -45,6 +55,7 @@ to go
   spread-fire
   spread-smoke
   move-passengers
+  move-panic-passengers
   tick
 end
 
@@ -82,7 +93,9 @@ to initialize-train
 end
 
 to initialize-passengers
-  create-passengers passenger-count[
+  let nb-passengers (passenger-count - (panic-rate * passenger-count / 100))
+
+  create-passengers nb-passengers[
     set shape "person business"
     set color brown
     setxy random-xcor random-ycor
@@ -95,6 +108,29 @@ to initialize-passengers
   ]
 
   ask passengers [
+    let empty-seats patches with [ pcolor = blue ] with [not any? turtles-here ]
+    if any? empty-seats
+    [
+      let target one-of empty-seats
+      face target
+      move-to target
+      ask patches in-radius 6 [ set pcolor white ]
+    ]
+  ]
+
+  create-panic-passengers (passenger-count - nb-passengers) [
+    set shape "person business"
+    set color brown
+    setxy random-xcor random-ycor
+    set size 18
+    set safe-passenger? false
+    set in-seat? true
+    set target-exit ""
+    set color red
+    move-to one-of patches with [ pcolor = blue ]
+  ]
+
+  ask panic-passengers [
     let empty-seats patches with [ pcolor = blue ] with [not any? turtles-here ]
     if any? empty-seats
     [
@@ -181,6 +217,13 @@ to set-target-exists
    ask passengers [
     let target min-one-of (patch-set exits-list) [distance myself]
     set target-exit target
+    set my-exits-list exits-list
+  ]
+
+   ask panic-passengers [
+    let target min-one-of (patch-set exits-list) [distance myself]
+    set target-exit target
+    set my-exits-list exits-list
   ]
 end
 
@@ -188,48 +231,83 @@ to move-passengers
   ask passengers with [safe-passenger? = false]
   [
     let fire-around-me patches in-radius 16 with [withFire-patche?]
-    if any? fire-around-me
+    ifelse any? fire-around-me
     [
-      set color black
-      set safe-passenger? true
+      right 180
+      forward 2
+      set my-exits-list remove target-exit my-exits-list
+      let new-target min-one-of (patch-set my-exits-list) [distance myself]
+      set target-exit new-target
+      ;;set color black
+      ;;set safe-passenger? true
+      ;; change exit or closest and get fare away from fire :)
+      ;; random-faster momvement
+      ;; decrease health
+    ]
+    [
+      ifelse ( ycor != 1 or ycor != -1 ) and (in-seat? = true)
+      [
+        go-to-main-path
+      ]
+      [
+        move-to-exit
+      ]
+    ]
+  ]
+end
+
+to move-panic-passengers
+ ask panic-passengers with [safe-passenger? = false]
+  [
+    let fire-around-me patches in-radius 16 with [withFire-patche?]
+    ifelse any? fire-around-me
+    [
+      right 180
+      forward 2
+      set my-exits-list remove target-exit my-exits-list
+      let new-target min-one-of (patch-set my-exits-list) [distance myself]
+      set target-exit new-target
+      ;;set color black
+      ;;set safe-passenger? true
       ;; change exit or closest and get fare away from fire :)
       ;; random-faster momvement
       ;; decrease health
     ]
 
-    ifelse ( ycor != 1 or ycor != -1 ) and (in-seat? = true)
-    [
-      go-to-main-path
-    ]
-    [
-      move-to-exit
-    ]
-  ]
+    [ifelse ( ycor != 1 or ycor != -1 ) and (in-seat? = true)
+     [
+       go-to-main-path
+     ]
+     [
+        move-to-exit
+     ]
+  ]]
 end
 
 
 to go-to-main-path
 
+;; If you are up, go down
   if ( member? target-exit ( patch-set exit1 exit2 exit3 exit4 ) )
       [
         let center patch xcor 1
         face center
         ifelse (ycor > 1)
         [
-          forward 0.05
+          forward 0.5
         ]
         [
           set in-seat? false
         ]
       ]
-
+;; If you are down, go up
   if ( member? target-exit ( patch-set exit5 exit6 exit7 exit8 ) )
       [
         let center patch xcor -1
         face center
         ifelse (ycor < -1)
         [
-          forward 0.05
+          forward 0.5
         ]
         [
           set in-seat? false
@@ -245,15 +323,15 @@ to move-to-exit
   [
     let target-x ([pxcor] of target-exit)
     facexy target-x 1
-    ifelse (xcor > target-x + 20)
+    ifelse (xcor > target-x + 35)
     [
-      forward 0.1
+      forward 0.5
     ]
     [
       face target-exit
       ifelse ( (round xcor) != ([pxcor] of target-exit))
       [
-        forward 0.1
+        forward 0.5
       ]
       [
         set color green
@@ -270,15 +348,15 @@ to move-to-exit
   [
     let target-x ([pxcor] of target-exit)
     facexy target-x 1
-    ifelse (xcor < target-x - 20)
+    ifelse (xcor < target-x - 35)
     [
-      forward 0.1
+      forward 0.5
     ]
     [
       face target-exit
       ifelse ( (round xcor) != ([pxcor] of target-exit))
       [
-        forward 0.1
+        forward 0.5
       ]
       [
         set color green
@@ -288,6 +366,10 @@ to move-to-exit
       ]
     ]
   ]
+end
+
+to move-randomly-to-exits
+
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -420,8 +502,8 @@ panic-rate
 panic-rate
 0
 100
-5.0
-1
+40.0
+5
 1
 NIL
 HORIZONTAL

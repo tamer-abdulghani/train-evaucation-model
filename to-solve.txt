@@ -1,21 +1,24 @@
 Extra:
-=========
-Step by step simulation. refer to HEX CELL EXAMPLE.	? 
-Look AHEAD example.	? 
+setup fire location
 
-optional:
-1. set shape to cloud
-   sprout-smoke-tiles 1 [
-        set shape "cloud"
-        set color grey 
-        set size 1.5
-      ]
+when an agent close to the fire, his health will be decreased until 0, then he is dead
+when an agent go toward the fire, we should remove all exits in the same directions in one tick (not always)
+
+Select top 3 closest exists and choose one randomly
+
+people can not go outside the train from side to another
+Fix walls in the train 
+Fix fire spreading when it is near seats (spread faster)
+Graph for health and for dead people
+Graph for the sensitivity of fire
+=========
+Look AHEAD example.	? 
+Slider for faster movement(forword)
 ========================
 What to do?
 Moving passenger function:
-	- They should move (in path) to the safe area which is Cyan.		OK 
-	- They should NOT go into fire or grey square or Blue Seats or Black or red or green.	? 
-	- They should NOT go toward fire	? 
+	- They should NOT go into fire	? 	
+	- They should NOT go toward fire ? 
 	- They should try to find the exits and closest doors (Either color or Coodinates)		OK 
 	- If fire burn passengers or staff, they are died.	? 
 	- people who touch the first or grey, their health attribute will be decreased. 	?
@@ -27,7 +30,11 @@ Moving staff function:
 Add Panic rate to passengers:
 	- Some of them will move randomly without target and others will move in good path to targets.
 =======================
+(patch -175 -50)
 
+[(patch -300 50) (patch -175 50) (patch 150 50) (patch 280 50) (patch -175 -50) (patch 150 -50) (patch 280 -50)]
+
+[(patch -300 50) (patch -175 50) (patch 150 50) (patch 280 50) (patch -300 -50) (patch 150 -50) (patch 280 -50)]
 
 
 
