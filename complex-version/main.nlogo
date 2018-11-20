@@ -5,7 +5,7 @@ breed [drivers driver]
 breed [fire-spots a-fire-spot]
 breed [smoke-spots a-smoke-spot]
 breed [fire-distinguishers a-fire-distinguisher]
-globals [ exit1 exit2 exit3 exit4 exit5 exit6 exit7 exit8 exits-list]
+globals [ exit1 exit2 exit3 exit4 exit5 exit6 exit7 exit8 exits-list max-x max-y min-x min-y]
 
 passengers-own [
   in-seat?
@@ -21,6 +21,7 @@ panic-passengers-own [
   health-passenger?
   target-exit
   my-exits-list
+  new-heading
 ]
 
 staff-members-own [
@@ -31,7 +32,7 @@ staff-members-own [
 
 patches-own[
   busy-patche?
-  accessible-patche?
+  accessible?
   withFire-patche?
 ]
 
@@ -43,10 +44,12 @@ to setup
   __clear-all-and-reset-ticks
   initialize-train
   initialize-passengers
+  initialize-panic-passengers
   initialize-staff
   initialize-fire
   initialize-exists
   set-target-exists
+  initialize-borders
   reset-ticks
 end
 
@@ -59,6 +62,12 @@ to go
   tick
 end
 
+to initialize-borders
+set max-y 48
+set min-y -55
+set max-x 459
+set min-x -478
+end
 
 to initialize-train
   import-pcolors "images/train.png"
@@ -80,15 +89,13 @@ to initialize-train
   set withFire-patche? false
   ]
 
-  ask patches
+  ask patches [
+    set accessible? false
+  ]
+
+  ask patches with [pxcor <  459 and pxcor > -478 and pycor > -55 and pycor < 48 ]
   [
-    ifelse pcolor = white and pcolor = cyan and pcolor = pink and pcolor = black
-    [
-      set accessible-patche? true
-    ]
-    [
-      set accessible-patche? false
-    ]
+    set accessible? true
   ]
 end
 
@@ -117,6 +124,10 @@ to initialize-passengers
       ask patches in-radius 6 [ set pcolor white ]
     ]
   ]
+end
+
+to initialize-panic-passengers
+  let nb-passengers (passenger-count - (panic-rate * passenger-count / 100))
 
   create-panic-passengers (passenger-count - nb-passengers) [
     set shape "person business"
@@ -127,6 +138,7 @@ to initialize-passengers
     set in-seat? true
     set target-exit ""
     set color red
+    set new-heading (random 360)
     move-to one-of patches with [ pcolor = blue ]
   ]
 
@@ -163,7 +175,7 @@ to initialize-staff
 end
 
 to initialize-fire
-  ask n-of 1 patches with [pcolor = black or pcolor = white] with [pycor < 45 and pycor > -45 ]
+  ask n-of fire-count patches with [pcolor = black or pcolor = white] with [pycor < 45 and pycor > -45 ]
   [
       sprout-fire-spots 1
       [
@@ -191,10 +203,10 @@ end
 
 
 to spread-fire
-  ask n-of 2 patches
+  ask n-of 1 patches with [withFire-patche?]
   [
-    if any? patches in-radius 16 with [count fire-spots-here > 0] with [pycor > -45 and pycor < 45] [
-      sprout-fire-spots 1 [
+    ask n-of 1 patches in-radius 10 with [pycor > -45 and pycor < 45] [
+      sprout-fire-spots 2 [
         set shape "fire"
         set color red
         set size 20
@@ -255,35 +267,6 @@ to move-passengers
     ]
   ]
 end
-
-to move-panic-passengers
- ask panic-passengers with [safe-passenger? = false]
-  [
-    let fire-around-me patches in-radius 16 with [withFire-patche?]
-    ifelse any? fire-around-me
-    [
-      right 180
-      forward 2
-      set my-exits-list remove target-exit my-exits-list
-      let new-target min-one-of (patch-set my-exits-list) [distance myself]
-      set target-exit new-target
-      ;;set color black
-      ;;set safe-passenger? true
-      ;; change exit or closest and get fare away from fire :)
-      ;; random-faster momvement
-      ;; decrease health
-    ]
-
-    [ifelse ( ycor != 1 or ycor != -1 ) and (in-seat? = true)
-     [
-       go-to-main-path
-     ]
-     [
-        move-to-exit
-     ]
-  ]]
-end
-
 
 to go-to-main-path
 
@@ -368,8 +351,67 @@ to move-to-exit
   ]
 end
 
+to move-panic-passengers
+ ask panic-passengers with [safe-passenger? = false]
+  [
+    ifelse ( (round xcor) != ([pxcor] of target-exit) and (round ycor) != ([pycor] of target-exit))
+    [
+      ifelse ( [accessible?] of patch-ahead 1  )
+      [forward 2]
+      [
+        set heading (one-of get-headings-list)
+        forward 2
+      ]
+    ]
+    [
+        set color green
+      let cyan-around patches in-radius 30 with [pcolor = cyan]
+      if any? cyan-around
+      [
+        move-to one-of cyan-around
+        set safe-passenger? true
+      ]
+
+
+    ]
+
+  ]
+end
+
+
 to move-randomly-to-exits
 
+end
+
+
+to move-panic-up
+  set new-heading 0
+end
+
+to move-panic-right
+  set new-heading 90
+end
+
+to move-panic-down
+  set new-heading 180
+end
+
+to move-panic-left
+  set new-heading 270
+end
+
+
+to-report get-headings-list
+  let dirs []
+  if [pycor] of (patch-at 0 1) < 48
+  [ set dirs lput (random 90) dirs ]
+  if [pxcor] of (patch-at 1 0) < 459
+  [ set dirs lput ((random 90) + 90)  dirs ]
+  if [pycor] of (patch-at 0 -1) > -55
+  [ set dirs lput ((random 90) + 180) dirs ]
+  if [pxcor] of (patch-at -1 0) > -478
+  [ set dirs lput ((random 90) + 270) dirs ]
+  report dirs
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -393,8 +435,8 @@ GRAPHICS-WINDOW
 600
 -200
 200
-0
-0
+1
+1
 1
 ticks
 30.0
@@ -457,7 +499,7 @@ staff-count
 staff-count
 0
 8
-8.0
+4.0
 1
 1
 NIL
@@ -472,7 +514,7 @@ drivers-count
 drivers-count
 0
 2
-1.0
+2.0
 1
 1
 NIL
@@ -487,7 +529,7 @@ fire-count
 fire-count
 0
 3
-1.0
+3.0
 1
 1
 NIL
@@ -502,7 +544,7 @@ panic-rate
 panic-rate
 0
 100
-40.0
+20.0
 5
 1
 NIL
