@@ -30,11 +30,16 @@ Moving staff function:
 Add Panic rate to passengers:
 	- Some of them will move randomly without target and others will move in good path to targets.
 =======================
-(patch -175 -50)
 
-[(patch -300 50) (patch -175 50) (patch 150 50) (patch 280 50) (patch -175 -50) (patch 150 -50) (patch 280 -50)]
+From teacher:
+* Prob. of fire spreading
+* Probagation to get panic if close to fire
+* Assume that staff-members have fire distinguisher 
+* Relation between nb-people safe & nb-staff 
+* Social graph (add children)
 
-[(patch -300 50) (patch -175 50) (patch 150 50) (patch 280 50) (patch -300 -50) (patch 150 -50) (patch 280 -50)]
+
+
 
 
 
