@@ -1,5 +1,4 @@
 breed [passengers passenger]
-breed [panic-passengers panic-passenger]
 breed [staff-members staff-member]
 breed [drivers driver]
 breed [fire-spots a-fire-spot]
@@ -9,19 +8,12 @@ globals [ exit1 exit2 exit3 exit4 exit5 exit6 exit7 exit8 exits-list max-x max-y
 
 passengers-own [
   in-seat?
-  safe-passenger?
-  health-passenger?
+  safe?
+  health
+  panic?
+  current-heading
   target-exit
   my-exits-list
-]
-
-panic-passengers-own [
-  in-seat?
-  safe-passenger?
-  health-passenger?
-  target-exit
-  my-exits-list
-  new-heading
 ]
 
 staff-members-own [
@@ -44,7 +36,6 @@ to setup
   __clear-all-and-reset-ticks
   initialize-train
   initialize-passengers
-  initialize-panic-passengers
   initialize-staff
   initialize-fire
   initialize-exists
@@ -100,17 +91,18 @@ to initialize-train
 end
 
 to initialize-passengers
-  let nb-passengers (passenger-count - (panic-rate * passenger-count / 100))
 
-  create-passengers nb-passengers[
+
+  create-passengers passenger-count [
     set shape "person business"
     set color brown
     setxy random-xcor random-ycor
     set size 18
-    set safe-passenger? false
+    set safe? false
     set in-seat? true
     set target-exit ""
     set color yellow
+    set panic? false
     move-to one-of patches with [ pcolor = blue ]
   ]
 
@@ -124,35 +116,14 @@ to initialize-passengers
       ask patches in-radius 6 [ set pcolor white ]
     ]
   ]
-end
 
-to initialize-panic-passengers
-  let nb-passengers (passenger-count - (panic-rate * passenger-count / 100))
-
-  create-panic-passengers (passenger-count - nb-passengers) [
-    set shape "person business"
-    set color brown
-    setxy random-xcor random-ycor
-    set size 18
-    set safe-passenger? false
-    set in-seat? true
-    set target-exit ""
+  ask n-of (panic-rate * passenger-count / 100) passengers [
+    set panic? true
     set color red
-    set new-heading (random 360)
-    move-to one-of patches with [ pcolor = blue ]
-  ]
-
-  ask panic-passengers [
-    let empty-seats patches with [ pcolor = blue ] with [not any? turtles-here ]
-    if any? empty-seats
-    [
-      let target one-of empty-seats
-      face target
-      move-to target
-      ask patches in-radius 6 [ set pcolor white ]
-    ]
+    set current-heading (random 360)
   ]
 end
+
 
 to initialize-staff
   create-staff-members staff-count [
@@ -232,7 +203,8 @@ to set-target-exists
     set my-exits-list exits-list
   ]
 
-   ask panic-passengers [
+  ask passengers with [panic?]
+  [
     let target min-one-of (patch-set exits-list) [distance myself]
     set target-exit target
     set my-exits-list exits-list
@@ -240,18 +212,28 @@ to set-target-exists
 end
 
 to move-passengers
-  ask passengers with [safe-passenger? = false]
+  ask passengers with [safe? = false and panic? = false]
   [
     let fire-around-me patches in-radius 16 with [withFire-patche?]
     ifelse any? fire-around-me
     [
+      if ((random-float 1) * 100) <= probability-to-get-panic [
+        set panic? true
+        set color red
+      ]
       right 180
       forward 2
       set my-exits-list remove target-exit my-exits-list
-      let new-target min-one-of (patch-set my-exits-list) [distance myself]
-      set target-exit new-target
-      ;;set color black
-      ;;set safe-passenger? true
+      ifelse (any? (patch-set my-exits-list))
+      [
+        let new-target min-one-of (patch-set my-exits-list) [distance myself]
+        set target-exit new-target
+      ]
+      [
+        set my-exits-list exits-list
+      ]
+      ;; set color black
+      ;; set safe? true
       ;; change exit or closest and get fare away from fire :)
       ;; random-faster momvement
       ;; decrease health
@@ -319,7 +301,7 @@ to move-to-exit
       [
         set color green
         move-to one-of patches in-radius 30 with [pcolor = cyan]
-        set safe-passenger? true
+        set safe? true
 
       ]
 
@@ -344,7 +326,7 @@ to move-to-exit
       [
         set color green
         move-to one-of patches in-radius 30 with [pcolor = cyan]
-        set safe-passenger? true
+        set safe? true
 
       ]
     ]
@@ -352,7 +334,7 @@ to move-to-exit
 end
 
 to move-panic-passengers
- ask panic-passengers with [safe-passenger? = false]
+ ask passengers with [safe? = false and panic? = true]
   [
     ifelse ( (round xcor) != ([pxcor] of target-exit) and (round ycor) != ([pycor] of target-exit))
     [
@@ -364,40 +346,32 @@ to move-panic-passengers
       ]
     ]
     [
-        set color green
-      let cyan-around patches in-radius 30 with [pcolor = cyan]
+      set color green
+      let cyan-around patches in-radius 8 with [pcolor = cyan]
       if any? cyan-around
       [
         move-to one-of cyan-around
-        set safe-passenger? true
+        set safe? true
       ]
-
-
     ]
 
   ]
 end
 
-
-to move-randomly-to-exits
-
-end
-
-
 to move-panic-up
-  set new-heading 0
+  set current-heading 0
 end
 
 to move-panic-right
-  set new-heading 90
+  set current-heading 90
 end
 
 to move-panic-down
-  set new-heading 180
+  set current-heading 180
 end
 
 to move-panic-left
-  set new-heading 270
+  set current-heading 270
 end
 
 
@@ -547,7 +521,22 @@ panic-rate
 20.0
 5
 1
-NIL
+%
+HORIZONTAL
+
+SLIDER
+13
+324
+189
+357
+probability-to-get-panic
+probability-to-get-panic
+0
+100
+20.0
+5
+1
+%
 HORIZONTAL
 
 @#$#@#$#@
