@@ -1,39 +1,20 @@
 Extra:
-setup fire location
+make escape function: set color green+.....
+Stop simulation condition: when people all either safe or died OR all fire spots are killed by staff	
 
-when an agent close to the fire, his health will be decreased until 0, then he is dead
-when an agent go toward the fire, we should remove all exits in the same directions in one tick (not always)
-
-Select top 3 closest exists and choose one randomly
-
-people can not go outside the train from side to another
-Fix walls in the train 
-Fix fire spreading when it is near seats (spread faster)
 Graph for health and for dead people
 Graph for the sensitivity of fire
+
+Fix accesible seats and walls
+
 =========
-Look AHEAD example.	? 
 Slider for faster movement(forword)
-========================
-What to do?
-Moving passenger function:
-	- They should NOT go into fire	? 	
-	- They should NOT go toward fire ? 
-	- They should try to find the exits and closest doors (Either color or Coodinates)		OK 
-	- If fire burn passengers or staff, they are died.	? 
-	- people who touch the first or grey, their health attribute will be decreased. 	?
 ========================
 Moving staff function:
 	- Staff should move and pick one fire-distinguisher 
 	- They go towards fire and stop the fire by changing the color to white.
 ========================
-Add Panic rate to passengers:
-	- Some of them will move randomly without target and others will move in good path to targets.
-=======================
-
 From teacher:
-* Prob. of fire spreading
-* Probagation to get panic if close to fire
 * Assume that staff-members have fire distinguisher 
 * Relation between nb-people safe & nb-staff 
 * Social graph (add children)
