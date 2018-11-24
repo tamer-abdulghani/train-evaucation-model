@@ -3,12 +3,15 @@ breed [staff-members staff-member]
 breed [drivers driver]
 breed [fire-spots a-fire-spot]
 breed [smoke-spots a-smoke-spot]
-breed [fire-distinguishers a-fire-distinguisher]
-globals [ exit1 exit2 exit3 exit4 exit5 exit6 exit7 exit8 exits-list max-x max-y min-x min-y]
+globals [
+  exit1 exit2 exit3 exit4 exit5 exit6 exit7 exit8 exits-list max-x max-y min-x min-y
+  people-total passengers-escaped passengers-died staff-members-escaped staff-members-died
+]
 
 passengers-own [
   in-seat?
   safe?
+  dead?
   health
   panic?
   current-heading
@@ -29,10 +32,6 @@ patches-own[
   withFire-patche?
 ]
 
-fire-distinguishers-own [
-  taken?
-]
-
 fire-spots-own [
   health
 ]
@@ -42,10 +41,12 @@ to setup
   initialize-train
   initialize-passengers
   initialize-staff
+  initialize-driver
   initialize-fire
   initialize-exists
   set-target-exists
   initialize-borders
+  initialize-globals
   reset-ticks
 end
 
@@ -71,6 +72,17 @@ set max-x 459
 set min-x -478
 end
 
+to initialize-globals
+set people-total 0
+
+set passengers-escaped 0
+set passengers-died 0
+set staff-members-escaped 0
+set staff-members-died 0
+set people-total (count passengers) + (count staff-members) + (count drivers)
+
+end
+
 to initialize-train
   import-pcolors "images/train.png"
   ask patches [
@@ -86,7 +98,7 @@ to initialize-train
     [set pcolor white]
   if pcolor = 135 or pcolor = 137.1
     [set pcolor pink]
-  if pcolor = 126
+  if pcolor = 126 or pcolor = 125
     [set pcolor magenta]
   set withFire-patche? false
   ]
@@ -110,6 +122,7 @@ to initialize-passengers
     setxy random-xcor random-ycor
     set size 18
     set safe? false
+    set dead? false
     set in-seat? true
     set target-exit ""
     set color yellow
@@ -147,6 +160,26 @@ to initialize-staff
   ]
   ask staff-members [
     let empty-seats patches with [ pcolor = green ] with [not any? turtles-here ]
+    if any? empty-seats
+    [
+      let target one-of empty-seats
+      face target
+      move-to target
+      ask patches in-radius 6 [ set pcolor white ]
+    ]
+  ]
+end
+
+to initialize-driver
+  create-drivers 1 [
+    set shape "person lumberjack"
+    set color red
+    setxy random-xcor random-ycor
+    set size 18
+    move-to one-of patches
+  ]
+  ask drivers [
+    let empty-seats patches with [ pcolor = magenta ] with [not any? turtles-here ]
     if any? empty-seats
     [
       let target one-of empty-seats
@@ -247,7 +280,7 @@ to update-my-exit
   ]
 end
 to move-passengers
-  ask passengers with [safe? = false and panic? = false]
+  ask passengers with [safe? = false and dead? = false and panic? = false]
   [
     ifelse (fire-around-me)
     [
@@ -327,6 +360,7 @@ to move-to-exit
         set color green
         move-to one-of patches in-radius 30 with [pcolor = cyan]
         set safe? true
+        set passengers-escaped (passengers-escaped + 1)
 
       ]
 
@@ -359,6 +393,7 @@ to move-to-exit
         set color green
         move-to one-of patches in-radius 30 with [pcolor = cyan]
         set safe? true
+        set passengers-escaped (passengers-escaped + 1)
 
       ]
     ]
@@ -384,13 +419,14 @@ to update-health
     ]
    [
       set color black
-      set safe? true
+      set dead? true
+    set passengers-died (passengers-died + 1)
     ]
 
 end
 
 to move-panic-passenger
-  ask passengers with [safe? = false and panic? = true]
+  ask passengers with [safe? = false and dead? = false and panic? = true]
   [
     set in-seat? false
     ifelse (fire-around-me)
@@ -457,6 +493,7 @@ to panic-move-to-closest-exit
           [
             move-to one-of cyan-around
             set safe? true
+            set passengers-escaped (passengers-escaped + 1)
           ]
         ]
   [
@@ -474,6 +511,7 @@ to panic-move-randomly
     [
      move-to one-of cyan-around
      set safe? true
+      set passengers-escaped (passengers-escaped + 1)
     ]
   ]
   [
@@ -533,13 +571,13 @@ to move-staff-members
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
-10
-1419
-420
+280
+21
+1497
+232
 -1
 -1
-1.0
+1.007
 1
 10
 1
@@ -551,8 +589,8 @@ GRAPHICS-WINDOW
 1
 -600
 600
--200
-200
+-100
+100
 1
 1
 1
@@ -560,10 +598,10 @@ ticks
 30.0
 
 BUTTON
-29
-26
-92
-59
+22
+65
+139
+116
 setup
 setup
 NIL
@@ -577,10 +615,10 @@ NIL
 1
 
 BUTTON
-103
-26
-166
-59
+150
+66
+262
+116
 go
 go
 T
@@ -594,10 +632,10 @@ NIL
 1
 
 SLIDER
-13
-72
-185
-105
+57
+189
+229
+222
 passenger-count
 passenger-count
 0
@@ -609,10 +647,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-14
-121
-186
-154
+58
+238
+230
+271
 staff-count
 staff-count
 0
@@ -624,25 +662,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-14
-172
-186
-205
-drivers-count
-drivers-count
-0
-2
-1.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-14
-221
-186
-254
+59
+285
+231
+318
 fire-count
 fire-count
 0
@@ -654,10 +677,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-14
-271
-186
-304
+59
+335
+231
+368
 panic-rate
 panic-rate
 0
@@ -669,10 +692,10 @@ panic-rate
 HORIZONTAL
 
 SLIDER
-13
-324
-189
-357
+58
+388
+234
+421
 probability-to-get-panic
 probability-to-get-panic
 0
@@ -682,6 +705,111 @@ probability-to-get-panic
 1
 %
 HORIZONTAL
+
+TEXTBOX
+111
+35
+261
+57
+Initialize
+18
+0.0
+1
+
+TEXTBOX
+97
+159
+247
+181
+Parameters
+18
+0.0
+1
+
+MONITOR
+492
+308
+572
+353
+NIL
+people-total
+0
+1
+11
+
+MONITOR
+742
+308
+846
+353
+NIL
+passengers-died
+0
+1
+11
+
+MONITOR
+594
+308
+721
+353
+NIL
+passengers-escaped
+0
+1
+11
+
+MONITOR
+1033
+308
+1154
+353
+NIL
+staff-members-died
+0
+1
+11
+
+MONITOR
+867
+308
+1011
+353
+NIL
+staff-members-escaped
+0
+1
+11
+
+PLOT
+492
+382
+1322
+572
+Total
+time
+totals
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"passengers-escaped" 1.0 0 -15040220 true "" "plot passengers-escaped"
+"passengers-diead" 1.0 0 -2674135 true "" "plot passengers-died"
+"staff-members-escaped" 1.0 0 -14070903 true "" "plot staff-members-escaped"
+
+TEXTBOX
+783
+261
+933
+283
+Simulation results
+18
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -932,6 +1060,33 @@ Polygon -14835848 true false 180 226 195 226 270 196 255 196
 Polygon -13345367 true false 209 202 209 216 244 202 243 188
 Line -16777216 false 180 90 150 165
 Line -16777216 false 120 90 150 165
+
+person lumberjack
+false
+0
+Polygon -7500403 true true 105 90 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 195 90
+Polygon -2674135 true false 60 196 90 211 114 155 120 196 180 196 187 158 210 211 240 196 195 91 165 91 150 106 150 135 135 91 105 91
+Circle -7500403 true true 110 5 80
+Rectangle -7500403 true true 127 79 172 94
+Polygon -6459832 true false 174 90 181 90 180 195 165 195
+Polygon -13345367 true false 180 195 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285
+Polygon -6459832 true false 126 90 119 90 120 195 135 195
+Rectangle -6459832 true false 45 180 255 195
+Polygon -16777216 true false 255 165 255 195 240 225 255 240 285 240 300 225 285 195 285 165
+Line -16777216 false 135 165 165 165
+Line -16777216 false 135 135 165 135
+Line -16777216 false 90 135 120 135
+Line -16777216 false 105 120 120 120
+Line -16777216 false 180 120 195 120
+Line -16777216 false 180 135 210 135
+Line -16777216 false 90 150 105 165
+Line -16777216 false 225 165 210 180
+Line -16777216 false 75 165 90 180
+Line -16777216 false 210 150 195 165
+Line -16777216 false 180 105 210 180
+Line -16777216 false 120 105 90 180
+Line -16777216 false 150 135 150 165
+Polygon -2674135 true false 100 30 104 44 189 24 185 10 173 10 166 1 138 -1 111 3 109 28
 
 person service
 false
