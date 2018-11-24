@@ -55,7 +55,6 @@ to go
   spread-fire
   spread-smoke
   move-passengers
-  ;;move-panic-passengers
   move-panic-passenger
   move-staff-members
   if (count fire-spots = 0)
@@ -152,8 +151,7 @@ end
 
 to initialize-staff
   create-staff-members staff-count [
-    set shape "person service"
-    set color red
+    set shape "person police"
     setxy random-xcor random-ycor
     set size 18
     move-to one-of patches
@@ -727,10 +725,10 @@ Parameters
 1
 
 MONITOR
-492
-308
-572
-353
+467
+300
+547
+345
 NIL
 people-total
 0
@@ -738,10 +736,10 @@ people-total
 11
 
 MONITOR
-742
-308
-846
-353
+717
+300
+821
+345
 NIL
 passengers-died
 0
@@ -749,10 +747,10 @@ passengers-died
 11
 
 MONITOR
-594
-308
-721
-353
+569
+300
+696
+345
 NIL
 passengers-escaped
 0
@@ -760,10 +758,10 @@ passengers-escaped
 11
 
 MONITOR
-1033
-308
-1154
-353
+1008
+300
+1129
+345
 NIL
 staff-members-died
 0
@@ -771,10 +769,10 @@ staff-members-died
 11
 
 MONITOR
-867
-308
-1011
-353
+842
+300
+986
+345
 NIL
 staff-members-escaped
 0
@@ -782,10 +780,10 @@ staff-members-escaped
 11
 
 PLOT
-492
-382
-1322
-572
+394
+366
+1224
+556
 Total
 time
 totals
@@ -802,10 +800,10 @@ PENS
 "staff-members-escaped" 1.0 0 -14070903 true "" "plot staff-members-escaped"
 
 TEXTBOX
-783
-261
-933
-283
+728
+258
+878
+280
 Simulation results
 18
 0.0
@@ -1087,6 +1085,29 @@ Line -16777216 false 180 105 210 180
 Line -16777216 false 120 105 90 180
 Line -16777216 false 150 135 150 165
 Polygon -2674135 true false 100 30 104 44 189 24 185 10 173 10 166 1 138 -1 111 3 109 28
+
+person police
+false
+0
+Polygon -1 true false 124 91 150 165 178 91
+Polygon -13345367 true false 134 91 149 106 134 181 149 196 164 181 149 106 164 91
+Polygon -13345367 true false 180 195 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285
+Polygon -13345367 true false 120 90 105 90 60 195 90 210 116 158 120 195 180 195 184 158 210 210 240 195 195 90 180 90 165 105 150 165 135 105 120 90
+Rectangle -7500403 true true 123 76 176 92
+Circle -7500403 true true 110 5 80
+Polygon -13345367 true false 150 26 110 41 97 29 137 -1 158 6 185 0 201 6 196 23 204 34 180 33
+Line -13345367 false 121 90 194 90
+Line -16777216 false 148 143 150 196
+Rectangle -16777216 true false 116 186 182 198
+Rectangle -16777216 true false 109 183 124 227
+Rectangle -16777216 true false 176 183 195 205
+Circle -1 true false 152 143 9
+Circle -1 true false 152 166 9
+Polygon -1184463 true false 172 112 191 112 185 133 179 133
+Polygon -1184463 true false 175 6 194 6 189 21 180 21
+Line -1184463 false 149 24 197 24
+Rectangle -16777216 true false 101 177 122 187
+Rectangle -16777216 true false 179 164 183 186
 
 person service
 false
