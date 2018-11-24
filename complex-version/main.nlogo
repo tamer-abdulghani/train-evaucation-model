@@ -20,6 +20,7 @@ staff-members-own [
   busy-staff?
   safe-staff?
   health-staff?
+  target-fire
 ]
 
 patches-own[
@@ -30,6 +31,10 @@ patches-own[
 
 fire-distinguishers-own [
   taken?
+]
+
+fire-spots-own [
+  health
 ]
 
 to setup
@@ -51,6 +56,11 @@ to go
   move-passengers
   ;;move-panic-passengers
   move-panic-passenger
+  move-staff-members
+  if (count fire-spots = 0)
+  [
+    stop
+  ]
   tick
 end
 
@@ -472,6 +482,52 @@ to panic-move-randomly
     [
       set heading (one-of get-headings-list)
       forward 2
+    ]
+  ]
+end
+
+to set-target-fire
+  let possible-targets patch-set patches with [ withFire-patche?]
+  if (any? possible-targets )
+  [
+    let target min-one-of (possible-targets) [distance myself]
+    set target-fire target
+  ]
+end
+
+to decriase-fire-health
+  if (any? fire-spots-on target-fire)
+  [
+     ask fire-spots-on target-fire [
+      set withFire-patche? false
+      die]
+
+  ]
+
+  if (any? smoke-spots-on target-fire)
+  [
+     ask smoke-spots-on target-fire [die]
+  ]
+end
+
+to move-staff-members
+  ask staff-members [
+    let count-fire-spots (count fire-spots)
+    ifelse (any? fire-spots)
+  [
+      set-target-fire
+      face target-fire
+
+
+      if (distance target-fire > 30)[
+        forward 2
+      ]
+      if (distance target-fire < 30)[
+        decriase-fire-health
+      ]
+    ]
+    [;;else statement
+   ;;exit from train
     ]
   ]
 end
