@@ -49,7 +49,8 @@ to go
   spread-fire
   spread-smoke
   move-passengers
-  move-panic-passengers
+  ;;move-panic-passengers
+  move-panic-passenger
   tick
 end
 
@@ -63,7 +64,7 @@ end
 to initialize-train
   import-pcolors "images/train.png"
   ask patches [
-  if pcolor = 87.1
+  if pcolor = 87.1 or pcolor = 85
     [set pcolor cyan]
   if pcolor = 0
     [set pcolor black]
@@ -73,7 +74,7 @@ to initialize-train
     [set pcolor green]
   if pcolor = 9.9
     [set pcolor white]
-  if pcolor = 135
+  if pcolor = 135 or pcolor = 137.1
     [set pcolor pink]
   if pcolor = 126
     [set pcolor magenta]
@@ -84,7 +85,7 @@ to initialize-train
     set accessible? false
   ]
 
-  ask patches with [pxcor <  459 and pxcor > -478 and pycor > -55 and pycor < 48 ]
+  ask patches with [pxcor <  459 and pxcor > -478 and pycor > -50 and pycor < 50 ]
   [
     set accessible? true
   ]
@@ -103,6 +104,7 @@ to initialize-passengers
     set target-exit ""
     set color yellow
     set panic? false
+    set health 100
     move-to one-of patches with [ pcolor = blue ]
   ]
 
@@ -210,33 +212,39 @@ to set-target-exists
     set my-exits-list exits-list
   ]
 end
+to update-panic-status
+if ((random-float 1) * 100) <= probability-to-get-panic [
+        set panic? true
+        set color red
+        set my-exits-list exits-list
+      ]
+end
 
+to change-dir
+  right 180
+  forward 2
+end
+
+to update-my-exit
+  set my-exits-list remove target-exit my-exits-list
+  ifelse (any? (patch-set my-exits-list))
+  [
+    let new-target min-one-of (patch-set my-exits-list) [distance myself]
+    set target-exit new-target
+  ]
+  [
+    set my-exits-list exits-list
+  ]
+end
 to move-passengers
   ask passengers with [safe? = false and panic? = false]
   [
-    let fire-around-me patches in-radius 16 with [withFire-patche?]
-    ifelse any? fire-around-me
+    ifelse (fire-around-me)
     [
-      if ((random-float 1) * 100) <= probability-to-get-panic [
-        set panic? true
-        set color red
-      ]
-      right 180
-      forward 2
-      set my-exits-list remove target-exit my-exits-list
-      ifelse (any? (patch-set my-exits-list))
-      [
-        let new-target min-one-of (patch-set my-exits-list) [distance myself]
-        set target-exit new-target
-      ]
-      [
-        set my-exits-list exits-list
-      ]
-      ;; set color black
-      ;; set safe? true
-      ;; change exit or closest and get fare away from fire :)
-      ;; random-faster momvement
-      ;; decrease health
+      update-health
+      update-panic-status
+      change-dir
+      update-my-exit
     ]
     [
       ifelse ( ycor != 1 or ycor != -1 ) and (in-seat? = true)
@@ -290,7 +298,14 @@ to move-to-exit
     facexy target-x 1
     ifelse (xcor > target-x + 35)
     [
-      forward 0.5
+       ifelse ( [accessible?] of patch-ahead 1  )
+      [
+        forward 0.5
+      ][
+        right 90
+        set panic? true
+        set color red
+      ]
     ]
     [
       face target-exit
@@ -315,7 +330,14 @@ to move-to-exit
     facexy target-x 1
     ifelse (xcor < target-x - 35)
     [
-      forward 0.5
+       ifelse ( [accessible?] of patch-ahead 1  )
+      [
+        forward 0.5
+      ][
+        right 90
+        set panic? true
+        set color red
+      ]
     ]
     [
       face target-exit
@@ -333,48 +355,6 @@ to move-to-exit
   ]
 end
 
-to move-panic-passengers
- ask passengers with [safe? = false and panic? = true]
-  [
-    ifelse ( (round xcor) != ([pxcor] of target-exit) and (round ycor) != ([pycor] of target-exit))
-    [
-      ifelse ( [accessible?] of patch-ahead 1  )
-      [forward 2]
-      [
-        set heading (one-of get-headings-list)
-        forward 2
-      ]
-    ]
-    [
-      set color green
-      let cyan-around patches in-radius 8 with [pcolor = cyan]
-      if any? cyan-around
-      [
-        move-to one-of cyan-around
-        set safe? true
-      ]
-    ]
-
-  ]
-end
-
-to move-panic-up
-  set current-heading 0
-end
-
-to move-panic-right
-  set current-heading 90
-end
-
-to move-panic-down
-  set current-heading 180
-end
-
-to move-panic-left
-  set current-heading 270
-end
-
-
 to-report get-headings-list
   let dirs []
   if [pycor] of (patch-at 0 1) < 48
@@ -386,6 +366,114 @@ to-report get-headings-list
   if [pxcor] of (patch-at -1 0) > -478
   [ set dirs lput ((random 90) + 270) dirs ]
   report dirs
+end
+
+to update-health
+  ifelse (health > 10)[
+      set health (health - 10)
+    ]
+   [
+      set color black
+      set safe? true
+    ]
+
+end
+
+to move-panic-passenger
+  ask passengers with [safe? = false and panic? = true]
+  [
+    set in-seat? false
+    ifelse (fire-around-me)
+    [
+      update-health
+      panic-change-dir
+      panic-move-away
+    ]
+    [
+      ifelse (close-to-exits)
+      [
+        panic-move-to-closest-exit
+      ]
+      [
+        panic-move-randomly
+      ]
+    ]
+  ]
+end
+
+to-report fire-around-me
+  let fires-around-me patches in-radius 16 with [withFire-patche?]
+  if any? fires-around-me
+  [
+    report true
+  ]
+  report false
+end
+
+to panic-change-dir
+  right 180
+  set heading (one-of get-headings-list)
+end
+
+to panic-move-away
+  forward 2
+  set my-exits-list remove target-exit my-exits-list
+  ifelse (any? (patch-set my-exits-list))
+  [
+    let new-target min-one-of (patch-set my-exits-list) [distance myself]
+    set target-exit new-target
+  ]
+  [
+    set my-exits-list exits-list
+  ]
+end
+
+to-report close-to-exits
+   let closest-exits patches in-radius 16 with [pcolor = pink]
+   if (any? closest-exits)[
+    report true
+  ]
+  report false
+end
+
+to panic-move-to-closest-exit
+  face target-exit
+  ifelse ( (round xcor) = ([pxcor] of target-exit) and (round ycor) = ([pycor] of target-exit))
+        [
+
+          set color green
+          let cyan-around patches in-radius 16 with [pcolor = cyan]
+          if any? cyan-around
+          [
+            move-to one-of cyan-around
+            set safe? true
+          ]
+        ]
+  [
+      forward 1
+  ]
+end
+
+to panic-move-randomly
+
+  ifelse ( (round xcor) = ([pxcor] of target-exit) and (round ycor) = ([pycor] of target-exit))
+  [
+    set color green
+    let cyan-around patches in-radius 8 with [pcolor = cyan]
+    if any? cyan-around
+    [
+     move-to one-of cyan-around
+     set safe? true
+    ]
+  ]
+  [
+    ifelse ( [accessible?] of patch-ahead 1  )
+    [forward 2]
+    [
+      set heading (one-of get-headings-list)
+      forward 2
+    ]
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -473,7 +561,7 @@ staff-count
 staff-count
 0
 8
-4.0
+8.0
 1
 1
 NIL
@@ -488,7 +576,7 @@ drivers-count
 drivers-count
 0
 2
-2.0
+1.0
 1
 1
 NIL
@@ -502,7 +590,7 @@ SLIDER
 fire-count
 fire-count
 0
-3
+10
 3.0
 1
 1
@@ -518,7 +606,7 @@ panic-rate
 panic-rate
 0
 100
-20.0
+30.0
 5
 1
 %
@@ -533,7 +621,7 @@ probability-to-get-panic
 probability-to-get-panic
 0
 100
-20.0
+0.0
 5
 1
 %
