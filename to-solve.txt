@@ -1,23 +1,21 @@
 Extra:
-make escape function: set color green+.....
+Add Movement for Driver
+Sensitivity
+Comment the code
+========================
 Stop simulation condition: when people all either safe or died OR all fire spots are killed by staff	
 
 Graph for health and for dead people
 Graph for the sensitivity of fire
+
+Prob. for fire fighters to help people escape from specific exits and also calm down panic people
+Fire fighters should not go out of the train's border
 
 Fix accesible seats and walls
 
 =========
 Slider for faster movement(forword)
 ========================
-Moving staff function:
-	- Staff should move and pick one fire-distinguisher 
-	- They go towards fire and stop the fire by changing the color to white.
-========================
-From teacher:
-* Assume that staff-members have fire distinguisher 
-* Relation between nb-people safe & nb-staff 
-* Social graph (add children)
 
 
 

@@ -3,9 +3,15 @@ breed [staff-members staff-member]
 breed [drivers driver]
 breed [fire-spots a-fire-spot]
 breed [smoke-spots a-smoke-spot]
+directed-link-breed [relations relation]
+
 globals [
+  relations-list
+
   exit1 exit2 exit3 exit4 exit5 exit6 exit7 exit8 exits-list max-x max-y min-x min-y
+
   people-total passengers-escaped passengers-died staff-members-escaped staff-members-died
+
 ]
 
 passengers-own [
@@ -13,10 +19,12 @@ passengers-own [
   safe?
   dead?
   panic?
+  in-relation?
   health
   current-heading
   target-exit
   my-exits-list
+  group-id ;; represent passenger who are connected with relations
 ]
 
 staff-members-own [
@@ -28,6 +36,10 @@ patches-own[
   fire?
 ]
 
+relations-own [
+  relation-type
+]
+
 fire-spots-own [
 
 ]
@@ -36,13 +48,15 @@ to setup
   __clear-all-and-reset-ticks
   initialize-train
   initialize-passengers
+  initialize-relations
+  initialize-social-graph
   initialize-staff
   initialize-driver
   initialize-fire
   initialize-exists
-
   initialize-borders
   initialize-globals
+
   reset-ticks
 end
 
@@ -50,8 +64,12 @@ to go
   let passengers-in-seat (passengers with [in-seat? = true])
   spread-fire
   spread-smoke
-  move-passengers
-  move-panic-passenger
+
+  move-passengers ;; To move any passenger which is NOT in relation and NOT panic
+  move-passengers-in-panic ;; To move any passenger which are NOT in relations and IN panic
+  move-passengers-in-relations ;; To move any passenger which are in relations whatever panic status is.
+
+
   move-staff-members
   if ((passengers-escaped + passengers-died + staff-members-escaped + staff-members-died) = people-total)
   [
@@ -61,10 +79,10 @@ to go
 end
 
 to initialize-borders
-set max-y 48
-set min-y -55
-set max-x 459
-set min-x -478
+  set max-y 48
+  set min-y -55
+  set max-x 459
+  set min-x -478
 end
 
 to initialize-globals
@@ -108,21 +126,29 @@ to initialize-train
   ]
 end
 
+to initialize-relations
+  set relations-list ( list "family" "couples" "collegues" "friends" )
+end
+
 to initialize-passengers
   create-passengers passenger-count [
     set shape "person business"
     set size 18
-    set safe? false
-    set dead? false
-    set in-seat? true
     set target-exit ""
     set color yellow
+
+    set in-seat? true
+    set safe? false
+    set dead? false
     set panic? false
+    set in-relation? false
     set health 100
+    set group-id 0
+
   ]
 
   ask passengers [
-    let empty-seats patches with [ pcolor = blue ] with [not any? turtles-here ]
+    let empty-seats patches with [ pcolor = blue ] with [ not any? turtles-here ]
     if any? empty-seats
     [
       let target one-of empty-seats
@@ -147,6 +173,7 @@ to initialize-staff
     set size 18
     move-to one-of patches
   ]
+
   ask staff-members [
     let empty-seats patches with [ pcolor = green ] with [not any? turtles-here ]
     if any? empty-seats
@@ -182,13 +209,13 @@ end
 to initialize-fire
   ask n-of fire-count patches with [pcolor = black or pcolor = white] with [pycor < 45 and pycor > -45 ]
   [
-      sprout-fire-spots 1
-      [
+    sprout-fire-spots 1
+    [
       set shape "fire"
       set color red
       set size 20
       set fire? true
-      ]
+    ]
   ]
 end
 
@@ -205,9 +232,137 @@ to initialize-exists
 
   set exits-list ( list exit1 exit2 exit3 exit4 exit5 exit6 exit7 exit8 )
 
-  set-target-exists
+  initialize-target-exists
 end
 
+
+to initialize-target-exists
+  ask passengers
+  [
+    let target min-one-of (patch-set exits-list) [distance myself]
+    set target-exit target
+    set my-exits-list exits-list
+  ]
+
+  update-relatives-exit
+end
+
+to update-relatives-exit
+
+  let counter 1
+  repeat passenger-count
+  [
+    let group passengers with [ group-id = counter ]
+    if (any? group)
+      [
+        ask group
+        [
+          set target-exit ([target-exit] of one-of group)
+        ]
+      ]
+    set counter (counter + 1)
+  ]
+end
+
+to initialize-social-graph
+
+  ask passengers
+  [
+
+    let prob (random-float 1)
+    if ((prob * 100) <= relation-probability )
+    [
+      let passenger2 one-of passengers in-radius 30
+
+      if ( passenger2 != self )
+      [
+        create-relation-to passenger2
+        set in-relation? true
+        ask passenger2 [
+          set in-relation? true
+        ]
+
+        ask link-with passenger2
+        [
+          let relationType (one-of relations-list)
+          set relation-type relationType
+          set color red
+          set thickness 1
+          set hidden? false
+
+          if (show-relation-name?)
+          [
+            set label relationType
+            set label-color black
+          ]
+        ]
+
+      ]
+    ]
+  ]
+
+  if (show-relation-link? = false)
+  [
+    ask relations
+    [
+      set hidden? true
+    ]
+  ]
+
+  update-group-id
+end
+
+to update-group-id
+  let counter 1
+  ask relations [
+    let t1 ([group-id] of end1)
+    let t2 ([group-id] of end2)
+
+
+    ifelse (t1 != t2 and t1 = 0 and t2 != 0 )[
+      ask end1 [
+        set group-id t2
+      ]
+    ]
+    [
+      if (t1 != t2 and t1 != 0 and t2 = 0)
+      [
+        ask end2[
+          set group-id t1
+        ]
+      ]
+
+    ]
+
+    if (t1 = 0 and t2 = 0)
+    [
+        ask end1 [
+          set group-id counter
+        ]
+
+        ask end2[
+          set group-id counter
+        ]
+
+        set counter (counter + 1)
+    ]
+
+  ]
+end
+
+to update-group-exit [id new-target]
+  if (id != 0)
+  [
+    let group passengers with [group-id = id]
+    if(any? group)
+    [
+      ask passengers with [group-id = id]
+      [
+        set target-exit new-target
+      ]
+    ]
+  ]
+end
 
 to spread-fire
   if (any? patches with [fire?])
@@ -235,13 +390,6 @@ to spread-smoke
   ]
 end
 
-to set-target-exists
-   ask passengers [
-    let target min-one-of (patch-set exits-list) [distance myself]
-    set target-exit target
-    set my-exits-list exits-list
-  ]
-end
 to update-panic-status
 if ((random-float 1) * 100) <= probability-to-get-panic [
         set panic? true
@@ -267,7 +415,7 @@ to update-my-exit
   ]
 end
 to move-passengers
-  ask passengers with [safe? = false and dead? = false and panic? = false]
+  ask passengers with [safe? = false and dead? = false and panic? = false and in-relation? = false]
   [
     ifelse (fire-around-me)
     [
@@ -275,8 +423,10 @@ to move-passengers
       update-panic-status
       change-dir
       update-my-exit
+      update-group-exit group-id target-exit
     ]
     [
+      update-group-exit group-id target-exit
       ifelse ( ycor != 1 or ycor != -1 ) and (in-seat? = true)
       [
         go-to-main-path
@@ -381,7 +531,8 @@ end
 
 to be-escaped-from-train
    set color green
-   let cyan-around patches in-radius 15 with [pcolor = cyan]
+   let cyan-around patches in-radius 15 with [ pcolor = cyan and not any? passengers-here]
+
    if any? cyan-around
    [
     move-to one-of cyan-around
@@ -415,8 +566,8 @@ to update-health
 
 end
 
-to move-panic-passenger
-  ask passengers with [safe? = false and dead? = false and panic? = true]
+to move-passengers-in-panic
+  ask passengers with [safe? = false and dead? = false and panic? = true and in-relation? = false]
   [
     set in-seat? false
     ifelse (fire-around-me)
@@ -508,6 +659,46 @@ to set-target-fire
   ]
 end
 
+to move-passengers-in-relations
+  ask passengers with [safe? = false and dead? = false and in-relation? = true]
+  [
+    let a group-id
+    let my-group passengers with [group-id = a]
+
+    let nb-panics-my-group (count my-group with [panic? = true])
+    let nb-normal-my-group (count my-group with [panic? = false])
+
+    ifelse (nb-panics-my-group > nb-normal-my-group)
+    [
+      ask my-group
+      [
+        set panic? true
+        set in-relation? false
+      ]
+    ]
+    [
+      ifelse (fire-around-me)
+      [
+        update-health
+        update-panic-status
+        change-dir
+        update-my-exit
+        update-group-exit group-id target-exit
+      ]
+      [
+        update-group-exit group-id target-exit
+        ifelse ( ycor != 1 or ycor != -1 ) and (in-seat? = true)
+        [
+          go-to-main-path
+        ]
+        [
+          move-to-exit
+        ]
+      ]
+    ]
+  ]
+end
+
 to decrease-fire
   if (any? fire-spots-on target-fire)
   [
@@ -550,11 +741,11 @@ end
 GRAPHICS-WINDOW
 280
 21
-1497
-232
+1489
+231
 -1
 -1
-1.007
+1.0
 1
 10
 1
@@ -576,9 +767,9 @@ ticks
 
 BUTTON
 22
-65
+66
 139
-116
+117
 setup
 setup
 NIL
@@ -632,7 +823,7 @@ staff-count
 staff-count
 0
 8
-8.0
+2.0
 1
 1
 NIL
@@ -645,9 +836,9 @@ SLIDER
 318
 fire-count
 fire-count
-0
+1
 10
-10.0
+6.0
 1
 1
 NIL
@@ -787,6 +978,43 @@ Simulation results
 18
 0.0
 1
+
+SLIDER
+59
+443
+234
+476
+relation-probability
+relation-probability
+0
+100
+100.0
+5
+1
+NIL
+HORIZONTAL
+
+SWITCH
+61
+500
+232
+533
+show-relation-name?
+show-relation-name?
+0
+1
+-1000
+
+SWITCH
+62
+548
+232
+581
+show-relation-link?
+show-relation-link?
+0
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
