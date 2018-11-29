@@ -12,28 +12,24 @@ passengers-own [
   in-seat?
   safe?
   dead?
-  health
   panic?
+  health
   current-heading
   target-exit
   my-exits-list
 ]
 
 staff-members-own [
-  busy-staff?
-  safe-staff?
-  health-staff?
   target-fire
 ]
 
 patches-own[
-  busy-patche?
   accessible?
-  withFire-patche?
+  fire?
 ]
 
 fire-spots-own [
-  health
+
 ]
 
 to setup
@@ -44,7 +40,7 @@ to setup
   initialize-driver
   initialize-fire
   initialize-exists
-  set-target-exists
+
   initialize-borders
   initialize-globals
   reset-ticks
@@ -57,7 +53,7 @@ to go
   move-passengers
   move-panic-passenger
   move-staff-members
-  if (count fire-spots = 0)
+  if ((passengers-escaped + passengers-died + staff-members-escaped + staff-members-died) = people-total)
   [
     stop
   ]
@@ -99,7 +95,7 @@ to initialize-train
     [set pcolor pink]
   if pcolor = 126 or pcolor = 125
     [set pcolor magenta]
-  set withFire-patche? false
+  set fire? false
   ]
 
   ask patches [
@@ -113,12 +109,8 @@ to initialize-train
 end
 
 to initialize-passengers
-
-
   create-passengers passenger-count [
     set shape "person business"
-    set color brown
-    setxy random-xcor random-ycor
     set size 18
     set safe? false
     set dead? false
@@ -127,7 +119,6 @@ to initialize-passengers
     set color yellow
     set panic? false
     set health 100
-    move-to one-of patches with [ pcolor = blue ]
   ]
 
   ask passengers [
@@ -196,7 +187,7 @@ to initialize-fire
       set shape "fire"
       set color red
       set size 20
-      set withFire-patche? true
+      set fire? true
       ]
   ]
 end
@@ -213,18 +204,23 @@ to initialize-exists
   set exit8 patch 280 -50
 
   set exits-list ( list exit1 exit2 exit3 exit4 exit5 exit6 exit7 exit8 )
+
+  set-target-exists
 end
 
 
 to spread-fire
-  ask n-of 1 patches with [withFire-patche?]
+  if (any? patches with [fire?])
   [
-    ask n-of 1 patches in-radius 10 with [pycor > -45 and pycor < 45] [
-      sprout-fire-spots 2 [
-        set shape "fire"
-        set color red
-        set size 20
-        set withFire-patche? true
+    ask n-of 1 patches with [fire?]
+    [
+      ask n-of 1 patches in-radius 10 with [pycor > -45 and pycor < 45] [
+        sprout-fire-spots 2 [
+          set shape "fire"
+          set color red
+          set size 20
+          set fire? true
+        ]
       ]
     ]
   ]
@@ -241,13 +237,6 @@ end
 
 to set-target-exists
    ask passengers [
-    let target min-one-of (patch-set exits-list) [distance myself]
-    set target-exit target
-    set my-exits-list exits-list
-  ]
-
-  ask passengers with [panic?]
-  [
     let target min-one-of (patch-set exits-list) [distance myself]
     set target-exit target
     set my-exits-list exits-list
@@ -355,11 +344,7 @@ to move-to-exit
         forward 0.5
       ]
       [
-        set color green
-        move-to one-of patches in-radius 30 with [pcolor = cyan]
-        set safe? true
-        set passengers-escaped (passengers-escaped + 1)
-
+        be-escaped-from-train
       ]
 
     ]
@@ -388,14 +373,21 @@ to move-to-exit
         forward 0.5
       ]
       [
-        set color green
-        move-to one-of patches in-radius 30 with [pcolor = cyan]
-        set safe? true
-        set passengers-escaped (passengers-escaped + 1)
-
+        be-escaped-from-train
       ]
     ]
   ]
+end
+
+to be-escaped-from-train
+   set color green
+   let cyan-around patches in-radius 15 with [pcolor = cyan]
+   if any? cyan-around
+   [
+    move-to one-of cyan-around
+    set safe? true
+    set passengers-escaped (passengers-escaped + 1)
+   ]
 end
 
 to-report get-headings-list
@@ -446,7 +438,7 @@ to move-panic-passenger
 end
 
 to-report fire-around-me
-  let fires-around-me patches in-radius 16 with [withFire-patche?]
+  let fires-around-me patches in-radius 16 with [fire?]
   if any? fires-around-me
   [
     report true
@@ -483,19 +475,11 @@ end
 to panic-move-to-closest-exit
   face target-exit
   ifelse ( (round xcor) = ([pxcor] of target-exit) and (round ycor) = ([pycor] of target-exit))
-        [
-
-          set color green
-          let cyan-around patches in-radius 16 with [pcolor = cyan]
-          if any? cyan-around
-          [
-            move-to one-of cyan-around
-            set safe? true
-            set passengers-escaped (passengers-escaped + 1)
-          ]
-        ]
   [
-      forward 1
+    be-escaped-from-train
+  ]
+  [
+    forward 1
   ]
 end
 
@@ -503,14 +487,7 @@ to panic-move-randomly
 
   ifelse ( (round xcor) = ([pxcor] of target-exit) and (round ycor) = ([pycor] of target-exit))
   [
-    set color green
-    let cyan-around patches in-radius 8 with [pcolor = cyan]
-    if any? cyan-around
-    [
-     move-to one-of cyan-around
-     set safe? true
-      set passengers-escaped (passengers-escaped + 1)
-    ]
+    be-escaped-from-train
   ]
   [
     ifelse ( [accessible?] of patch-ahead 1  )
@@ -523,7 +500,7 @@ to panic-move-randomly
 end
 
 to set-target-fire
-  let possible-targets patch-set patches with [ withFire-patche?]
+  let possible-targets patch-set patches with [ fire? ]
   if (any? possible-targets )
   [
     let target min-one-of (possible-targets) [distance myself]
@@ -531,13 +508,14 @@ to set-target-fire
   ]
 end
 
-to decriase-fire-health
+to decrease-fire
   if (any? fire-spots-on target-fire)
   [
-     ask fire-spots-on target-fire [
-      set withFire-patche? false
-      die]
-
+    ask fire-spots-on target-fire
+    [
+      set fire? false
+      die
+    ]
   ]
 
   if (any? smoke-spots-on target-fire)
@@ -547,23 +525,24 @@ to decriase-fire-health
 end
 
 to move-staff-members
-  ask staff-members [
+  ask staff-members
+  [
     let count-fire-spots (count fire-spots)
     ifelse (any? fire-spots)
-  [
+    [
       set-target-fire
       face target-fire
-
 
       if (distance target-fire > 30)[
         forward 2
       ]
       if (distance target-fire < 30)[
-        decriase-fire-health
+        decrease-fire
       ]
     ]
-    [;;else statement
-   ;;exit from train
+    [
+      ;;else statement
+      ;;exit from train
     ]
   ]
 end
@@ -668,7 +647,7 @@ fire-count
 fire-count
 0
 10
-3.0
+10.0
 1
 1
 NIL
@@ -683,7 +662,7 @@ panic-rate
 panic-rate
 0
 100
-30.0
+0.0
 5
 1
 %
