@@ -1,32 +1,23 @@
 Extra:
-=========
-Step by step simulation. refer to HEX CELL EXAMPLE.	? 
-Look AHEAD example.	? 
+Add Movement for Driver
+Sensitivity
+Comment the code
+========================
+Stop simulation condition: when people all either safe or died OR all fire spots are killed by staff	
 
-optional:
-1. set shape to cloud
-   sprout-smoke-tiles 1 [
-        set shape "cloud"
-        set color grey 
-        set size 1.5
-      ]
+Graph for health and for dead people
+Graph for the sensitivity of fire
+
+Prob. for fire fighters to help people escape from specific exits and also calm down panic people
+Fire fighters should not go out of the train's border
+
+Fix accesible seats and walls
+
+=========
+Slider for faster movement(forword)
 ========================
-What to do?
-Moving passenger function:
-	- They should move (in path) to the safe area which is Cyan.		OK 
-	- They should NOT go into fire or grey square or Blue Seats or Black or red or green.	? 
-	- They should NOT go toward fire	? 
-	- They should try to find the exits and closest doors (Either color or Coodinates)		OK 
-	- If fire burn passengers or staff, they are died.	? 
-	- people who touch the first or grey, their health attribute will be decreased. 	?
-========================
-Moving staff function:
-	- Staff should move and pick one fire-distinguisher 
-	- They go towards fire and stop the fire by changing the color to white.
-========================
-Add Panic rate to passengers:
-	- Some of them will move randomly without target and others will move in good path to targets.
-=======================
+
+
 
 
 

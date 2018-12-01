@@ -296,11 +296,11 @@ end
 GRAPHICS-WINDOW
 210
 10
-647
-448
+713
+514
 -1
 -1
-13.0
+15.0
 1
 10
 1
@@ -363,7 +363,7 @@ passenger-count
 passenger-count
 0
 48
-48.0
+0.0
 1
 1
 NIL
@@ -378,7 +378,7 @@ staff-count
 staff-count
 0
 4
-4.0
+0.0
 1
 1
 NIL
@@ -393,7 +393,7 @@ fire-count
 fire-count
 1
 3
-1.0
+0.0
 1
 1
 NIL
@@ -408,7 +408,7 @@ panic-rate
 panic-rate
 0
 100
-100.0
+0.0
 1
 1
 NIL
