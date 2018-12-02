@@ -2,6 +2,8 @@ Extra:
 Add Movement for Driver
 Sensitivity
 Comment the code
+Introduce healf decrease of staff members accoarding smoke
+Spread smoke around train
 ========================
 Stop simulation condition: when people all either safe or died OR all fire spots are killed by staff	
 
@@ -12,7 +14,7 @@ Prob. for fire fighters to help people escape from specific exits and also calm 
 Fire fighters should not go out of the train's border
 
 Fix accesible seats and walls
-
+Fix stucked passangers
 =========
 Slider for faster movement(forword)
 ========================

@@ -12,6 +12,7 @@ globals [
 
   people-total passengers-escaped passengers-died staff-members-escaped staff-members-died
 
+  extinguisherDist
 ]
 
 passengers-own [
@@ -28,7 +29,8 @@ passengers-own [
 ]
 
 staff-members-own [
-  target-fire
+  staff-target
+  staff-safe?
 ]
 
 patches-own[
@@ -93,7 +95,7 @@ set passengers-died 0
 set staff-members-escaped 0
 set staff-members-died 0
 set people-total (count passengers) + (count staff-members) + (count drivers)
-
+set extinguisherDist 20
 end
 
 to initialize-train
@@ -123,6 +125,16 @@ to initialize-train
   ask patches with [pxcor <  459 and pxcor > -478 and pycor > -50 and pycor < 50 ]
   [
     set accessible? true
+  ]
+
+  ask patches with [(member? pxcor [-333 -332 -334 312 311 313]) and ((pycor < 50 and pycor > 8) or (pycor > -58 and pycor < -11))]
+  [
+    set accessible? false
+  ]
+
+  ask patches with [  (member? pxcor [-272 -271 -273 -205 -204 -206 -110 -109 -111 -77 -78 -76 57 56 58 89 88 90 184 183 185 252 251 253]) and ((pycor > -58 and pycor < -20) or (pycor < 51 and pycor > 21))]
+  [
+    set accessible? false
   ]
 end
 
@@ -171,6 +183,7 @@ to initialize-staff
     set shape "person police"
     setxy random-xcor random-ycor
     set size 18
+    set staff-safe? false
     move-to one-of patches
   ]
 
@@ -650,15 +663,6 @@ to panic-move-randomly
   ]
 end
 
-to set-target-fire
-  let possible-targets patch-set patches with [ fire? ]
-  if (any? possible-targets )
-  [
-    let target min-one-of (possible-targets) [distance myself]
-    set target-fire target
-  ]
-end
-
 to move-passengers-in-relations
   ask passengers with [safe? = false and dead? = false and in-relation? = true]
   [
@@ -699,43 +703,119 @@ to move-passengers-in-relations
   ]
 end
 
-to decrease-fire
-  if (any? fire-spots-on target-fire)
+to set-target-fire
+  let possible-targets patch-set patches with [ fire? ]
+  if (any? possible-targets )
   [
-    ask fire-spots-on target-fire
+    let new-target min-one-of (possible-targets) [distance myself]
+    set staff-target new-target
+  ]
+end
+
+to decrease-fire
+  if (any? fire-spots-on staff-target)
+  [
+    ask fire-spots-on staff-target
     [
       set fire? false
       die
     ]
   ]
 
-  if (any? smoke-spots-on target-fire)
+  if (any? smoke-spots-on staff-target)
   [
-     ask smoke-spots-on target-fire [die]
+     ask smoke-spots-on staff-target [die]
   ]
 end
 
 to move-staff-members
   ask staff-members
   [
+    if (not staff-safe?) [
+      calme-passengers
     let count-fire-spots (count fire-spots)
     ifelse (any? fire-spots)
     [
       set-target-fire
-      face target-fire
+      face staff-target
 
-      if (distance target-fire > 30)[
-        forward 2
+      if (distance staff-target > extinguisherDist)[
+        move-agent
       ]
-      if (distance target-fire < 30)[
+      if (distance staff-target < extinguisherDist)[
         decrease-fire
       ]
     ]
     [
       ;;else statement
-      ;;exit from train
+      let passengers-in-train passengers with [safe? = false and dead? = false]
+      ifelse (any? passengers-in-train)
+        [
+          let panic-passenger-in-train passengers-in-train with [panic? = true]
+          if (any? panic-passenger-in-train)
+          [
+            set passengers-in-train panic-passenger-in-train
+          ]
+          set staff-target min-one-of other passengers-in-train [distance myself]
+          move-agent
+        ]
+        [
+          ;;exit go out of train
+          set-target-exist-agent
+          move-agent
+          be-safe-staff
+        ]
     ]
   ]
+  ]
+end
+
+to calme-passengers
+  let calme-distance 30
+  let panic-passengers-around passengers with [safe? = false and dead? = false and panic? = true and distance myself < calme-distance]
+  ask panic-passengers-around
+  [
+    set color yellow
+    set panic? false
+  ]
+
+end
+
+to set-target-exist-agent
+    let new-target min-one-of (patch-set exits-list) [distance myself]
+    set staff-target new-target
+end
+
+to be-safe-staff
+   if ( (distance staff-target) < 10 )
+   [
+    let out-y max-y + 15
+    if ((distancexy xcor max-y) > (distancexy xcor min-y))
+    [
+      set out-y min-y - 15
+    ]
+    setxy xcor out-y
+    set staff-safe? true
+    set staff-members-escaped (staff-members-escaped + 1)
+   ]
+end
+
+to move-agent
+  face staff-target
+  ifelse ( [accessible?] of patch-ahead 2)
+    [
+      forward 2
+    ]
+    [
+      ifelse ( (distancexy xcor max-y) < (distancexy xcor min-y)  )
+      [
+        facexy xcor min-y
+      ]
+      [
+        facexy xcor max-y
+      ]
+      forward 2
+    ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -823,7 +903,7 @@ staff-count
 staff-count
 0
 8
-2.0
+4.0
 1
 1
 NIL
@@ -838,7 +918,7 @@ fire-count
 fire-count
 1
 10
-6.0
+2.0
 1
 1
 NIL
