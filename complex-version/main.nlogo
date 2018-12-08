@@ -6,8 +6,6 @@ breed [smoke-spots a-smoke-spot]
 directed-link-breed [relations relation]
 
 globals [
-  sample
-
   relations-list
 
   exit1 exit2 exit3 exit4 exit5 exit6 exit7 exit8 exits-list max-x max-y min-x min-y
@@ -35,8 +33,10 @@ passengers-own [
 ]
 
 staff-members-own [
-  staff-target
-  staff-safe?
+  safe?
+  dead?
+  target-fire
+  health
 ]
 
 drivers-own[
@@ -108,6 +108,7 @@ to watch-sample
     ]
   ]
 end
+
 to watch-sample-init
   ifelse(watch-samples? = false)
   [
@@ -236,7 +237,9 @@ to initialize-staff
     set shape "person police"
     setxy random-xcor random-ycor
     set size 18
-    set staff-safe? false
+    set safe? false
+    set dead? false
+    set health 300
     move-to one-of patches
   ]
 
@@ -250,6 +253,18 @@ to initialize-staff
       ask patches in-radius 6 [ set pcolor white ]
     ]
   ]
+end
+
+to-report get-total-staff-health
+  let total-health 0
+  foreach (list staff-members)
+  [
+    agent ->
+    ask agent[
+      set total-health (total-health + health)
+    ]
+  ]
+  report total-health
 end
 
 to initialize-driver
@@ -435,7 +450,8 @@ to spread-fire
   [
     ask n-of 1 patches with [fire?]
     [
-      ask n-of 1 patches in-radius 10 with [pycor > -45 and pycor < 45] [
+      ask n-of 1 patches in-radius 10 with [pycor > -45 and pycor < 45] with [pxcor < 450 and pxcor > -450]
+      [
         sprout-fire-spots 2 [
           set shape "fire"
           set color red
@@ -620,14 +636,13 @@ end
 
 to update-health
   ifelse (health > 10)[
-      set health (health - 10)
-    ]
-   [
-      set color black
-      set dead? true
+    set health (health - 10)
+  ]
+  [
+    set color black
+    set dead? true
     set passengers-died (passengers-died + 1)
-    ]
-
+  ]
 end
 
 to move-passengers-in-panic
@@ -754,76 +769,58 @@ to move-passengers-in-relations
   ]
 end
 
-to set-target-fire
-  let possible-targets patch-set patches with [ fire? ]
-  if (any? possible-targets )
-  [
-    let new-target min-one-of (possible-targets) [distance myself]
-    set staff-target new-target
-  ]
-end
-
-to decrease-fire
-  if (any? fire-spots-on staff-target)
-  [
-    ask fire-spots-on staff-target
-    [
-      die
-    ]
-    ask staff-target [
-        set fire? false
-    ]
-  ]
-
-  if (any? smoke-spots-on staff-target)
-  [
-     ask smoke-spots-on staff-target [die]
-  ]
-end
-
 to move-staff-members
-  ask staff-members
+  ask staff-members with [safe? = false and dead? = false]
   [
-    if (not staff-safe?) [
-      calme-passengers
-      let count-fire-spots (count fire-spots)
-      ifelse (any? fire-spots)
-      [
-        set-target-fire
-        face staff-target
+    let count-fire-spots (count fire-spots)
+    ifelse (any? fire-spots)
+    [
+      try-to-stop-fire
 
-        if (distance staff-target > fire-extinguisher-distance)[
-          move-agent
-        ]
-        if (distance staff-target < fire-extinguisher-distance)[
-          decrease-fire
-        ]
+    ]
+    [
+      let passengers-in-train passengers with [safe? = false and dead? = false]
+      ifelse (any? passengers-in-train)
+      [
+        calm-down-passengers
+        help-passengers-to-escape
       ]
       [
-        ;;else statement
-        let passengers-in-train passengers with [safe? = false and dead? = false]
-        ifelse (any? passengers-in-train)
-        [
-          let panic-passenger-in-train passengers-in-train with [panic? = true]
-          if (any? panic-passenger-in-train)
-          [
-            set passengers-in-train panic-passenger-in-train
-          ]
-          set staff-target min-one-of other passengers-in-train [distance myself]
-          move-agent
-        ]
-        [
-          ;;exit go out of train
-          set-target-exist-agent
-          move-agent
-          be-safe-staff
-        ]
+        move-staff-to-exit
       ]
     ]
   ]
 end
 
-to calme-passengers
+to try-to-stop-fire
+  set-target-fire
+  face target-fire
+
+  if (distance target-fire > fire-extinguisher-distance)[
+    move-agent
+  ]
+  if (distance target-fire < fire-extinguisher-distance)[
+    decrease-fire
+    update-staff-health
+  ]
+end
+
+to update-staff-health
+  ifelse (health > 10)
+  [
+    if (random-float 1 > 0.5)
+    [
+      set health (health - 2)
+    ]
+  ]
+  [
+    set color black
+    set dead? true
+    set staff-members-died (staff-members-died + 1)
+  ]
+end
+
+to calm-down-passengers
   let calme-distance 30
   let panic-passengers-around passengers with [safe? = false and dead? = false and panic? = true and distance myself < calme-distance]
   ask panic-passengers-around
@@ -831,16 +828,32 @@ to calme-passengers
     set color yellow
     set panic? false
   ]
+end
 
+to help-passengers-to-escape
+  let passengers-in-train passengers with [safe? = false and dead? = false]
+  let panic-passenger-in-train passengers-in-train with [panic? = true]
+  if (any? panic-passenger-in-train)
+  [
+    set passengers-in-train panic-passenger-in-train
+  ]
+  set target-fire min-one-of other passengers-in-train [distance myself]
+  move-agent
+end
+
+to move-staff-to-exit
+  set-target-exist-agent
+  move-agent
+  escaped-staff-from-train
 end
 
 to set-target-exist-agent
     let new-target min-one-of (patch-set exits-list) [distance myself]
-    set staff-target new-target
+    set target-fire new-target
 end
 
-to be-safe-staff
-   if ( (distance staff-target) < 10 )
+to escaped-staff-from-train
+   if ( (distance target-fire) < 10 )
    [
     let out-y max-y + 15
     if ((distancexy xcor max-y) > (distancexy xcor min-y))
@@ -848,13 +861,14 @@ to be-safe-staff
       set out-y min-y - 15
     ]
     setxy xcor out-y
-    set staff-safe? true
+    set safe? true
+    set color green
     set staff-members-escaped (staff-members-escaped + 1)
    ]
 end
 
 to move-agent
-  face staff-target
+  face target-fire
   ifelse ( [accessible?] of patch-ahead 2)
     [
       forward 2
@@ -871,6 +885,34 @@ to move-agent
     ]
 end
 
+
+to set-target-fire
+  let possible-targets patch-set patches with [ fire? ]
+  if (any? possible-targets )
+  [
+    let new-target min-one-of (possible-targets) [distance myself]
+    set target-fire new-target
+  ]
+end
+
+to decrease-fire
+  if (any? fire-spots-on target-fire)
+  [
+    ask fire-spots-on target-fire
+    [
+      die
+    ]
+    ask target-fire [
+        set fire? false
+    ]
+  ]
+
+  if (any? smoke-spots-on target-fire)
+  [
+     ask smoke-spots-on target-fire [die]
+  ]
+end
+
 to move-driver
   ask drivers with [safe? = false]
   [
@@ -881,12 +923,12 @@ to move-driver
       forward 0.5
     ]
     [
-      be-escaped-driver-from-train
+      escape-driver-from-train
     ]
   ]
 end
 
-to be-escaped-driver-from-train
+to escape-driver-from-train
   ask drivers[
     set safe? true
     set color green
@@ -921,10 +963,10 @@ ticks
 30.0
 
 BUTTON
-10
-41
-127
-92
+11
+516
+96
+549
 setup
 setup
 NIL
@@ -938,10 +980,10 @@ NIL
 1
 
 BUTTON
-138
-41
-250
-91
+99
+516
+181
+549
 go
 go
 T
@@ -955,25 +997,25 @@ NIL
 1
 
 SLIDER
-37
-128
-209
-161
+40
+36
+212
+69
 passenger-count
 passenger-count
 0
 60
-60.0
+59.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-38
-177
-210
-210
+39
+73
+211
+106
 staff-count
 staff-count
 0
@@ -986,65 +1028,65 @@ HORIZONTAL
 
 SLIDER
 39
-224
+112
 211
-257
+145
 fire-count
 fire-count
 1
 10
-4.0
+8.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-39
-274
-211
-307
+38
+177
+210
+210
 panic-rate
 panic-rate
 0
 100
-50.0
+55.0
 5
 1
 %
 HORIZONTAL
 
 SLIDER
-38
-327
+37
 214
-360
+213
+247
 probability-to-get-panic
 probability-to-get-panic
 0
 100
-30.0
+80.0
 5
 1
 %
 HORIZONTAL
 
 TEXTBOX
-99
-10
-249
-32
+44
+11
+194
+33
 Initialize
 18
 0.0
 1
 
 TEXTBOX
-77
-98
-227
-120
-Parameters
+39
+150
+189
+172
+Panic rate
 18
 0.0
 1
@@ -1107,8 +1149,8 @@ staff-members-escaped
 PLOT
 459
 358
-1289
-548
+895
+557
 Total
 time
 totals
@@ -1135,25 +1177,25 @@ Simulation results
 1
 
 SLIDER
-39
-382
-214
-415
+36
+278
+211
+311
 relation-probability
 relation-probability
 0
 100
-100.0
+90.0
 5
 1
 NIL
 HORIZONTAL
 
 SWITCH
-41
-439
-212
-472
+37
+315
+210
+348
 show-relation-name?
 show-relation-name?
 1
@@ -1161,10 +1203,10 @@ show-relation-name?
 -1000
 
 SWITCH
-42
-487
-212
-520
+36
+351
+210
+384
 show-relation-link?
 show-relation-link?
 1
@@ -1172,10 +1214,10 @@ show-relation-link?
 -1000
 
 BUTTON
-47
-535
-195
-568
+185
+516
+268
+549
 Watch sample
 watch-sample-init
 NIL
@@ -1187,6 +1229,35 @@ NIL
 NIL
 NIL
 1
+
+TEXTBOX
+39
+251
+189
+276
+Social graph\n
+20
+0.0
+1
+
+PLOT
+917
+359
+1271
+557
+Staff passengers fire
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Fire" 1.0 0 -2674135 true "" "plot count fire-spots"
+"Total staff Health" 1.0 0 -13345367 true "" "plot get-total-staff-health"
 
 @#$#@#$#@
 ## WHAT IS IT?
