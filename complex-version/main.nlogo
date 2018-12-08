@@ -39,6 +39,10 @@ staff-members-own [
   staff-safe?
 ]
 
+drivers-own[
+  safe?
+]
+
 patches-own[
   accessible?
   fire?
@@ -76,7 +80,8 @@ to go
   move-passengers-in-panic ;; To move any passenger which are NOT in relations and IN panic
   move-passengers-in-relations ;; To move any passenger which are in relations whatever panic status is.
 
-  move-staff-members
+  move-staff-members;; To move train stafff towards the fire, then to help people, and then to escape from the train
+  move-driver;; To let train driver escape from the train closest exit
 
   watch-sample
 
@@ -253,7 +258,6 @@ to initialize-driver
     set color red
     setxy random-xcor random-ycor
     set size 18
-    move-to one-of patches
   ]
   ask drivers [
     let empty-seats patches with [ pcolor = magenta ] with [not any? turtles-here ]
@@ -263,6 +267,7 @@ to initialize-driver
       face target
       move-to target
       ask patches in-radius 6 [ set pcolor white ]
+      set safe? false
     ]
   ]
 end
@@ -865,6 +870,28 @@ to move-agent
       forward 2
     ]
 end
+
+to move-driver
+  ask drivers with [safe? = false]
+  [
+    let driver-target-exit (patch xcor (max-y + 10))
+    face driver-target-exit
+    ifelse ( (round ycor) != ([pycor] of driver-target-exit))
+    [
+      forward 0.5
+    ]
+    [
+      be-escaped-driver-from-train
+    ]
+  ]
+end
+
+to be-escaped-driver-from-train
+  ask drivers[
+    set safe? true
+    set color green
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 280
@@ -1023,10 +1050,10 @@ Parameters
 1
 
 MONITOR
-720
-298
-800
-343
+491
+292
+612
+337
 NIL
 people-total
 0
@@ -1034,10 +1061,10 @@ people-total
 11
 
 MONITOR
-970
-298
-1074
-343
+782
+292
+886
+337
 NIL
 passengers-died
 0
@@ -1045,10 +1072,10 @@ passengers-died
 11
 
 MONITOR
-822
-298
-949
-343
+634
+292
+761
+337
 NIL
 passengers-escaped
 0
@@ -1056,10 +1083,10 @@ passengers-escaped
 11
 
 MONITOR
-1261
-298
-1382
-343
+1073
+292
+1194
+337
 NIL
 staff-members-died
 0
@@ -1067,10 +1094,10 @@ staff-members-died
 11
 
 MONITOR
-1095
-298
-1239
-343
+907
+292
+1051
+337
 NIL
 staff-members-escaped
 0
@@ -1078,10 +1105,10 @@ staff-members-escaped
 11
 
 PLOT
-647
-364
-1477
-554
+459
+358
+1289
+548
 Total
 time
 totals
@@ -1098,10 +1125,10 @@ PENS
 "staff-members-escaped" 1.0 0 -14070903 true "" "plot staff-members-escaped"
 
 TEXTBOX
-981
-256
-1131
-278
+793
+250
+943
+272
 Simulation results
 18
 0.0
