@@ -6,13 +6,18 @@ breed [smoke-spots a-smoke-spot]
 directed-link-breed [relations relation]
 
 globals [
+  sample
+
   relations-list
 
   exit1 exit2 exit3 exit4 exit5 exit6 exit7 exit8 exits-list max-x max-y min-x min-y
 
   people-total passengers-escaped passengers-died staff-members-escaped staff-members-died
 
-  extinguisherDist
+  fire-extinguisher-distance ;; Minimum distance to train staff to use extinguisher against fire
+
+  watch-samples?
+  samples
 ]
 
 passengers-own [
@@ -25,7 +30,8 @@ passengers-own [
   current-heading
   target-exit
   my-exits-list
-  group-id ;; represent passenger who are connected with relations
+  group-id ;; Id of a group of passengers who are connected with relationships.
+
 ]
 
 staff-members-own [
@@ -58,7 +64,6 @@ to setup
   initialize-exists
   initialize-borders
   initialize-globals
-
   reset-ticks
 end
 
@@ -71,13 +76,53 @@ to go
   move-passengers-in-panic ;; To move any passenger which are NOT in relations and IN panic
   move-passengers-in-relations ;; To move any passenger which are in relations whatever panic status is.
 
-
   move-staff-members
-  if ((passengers-escaped + passengers-died + staff-members-escaped + staff-members-died) = people-total)
+
+  watch-sample
+
+  if ((passengers-escaped + passengers-died + staff-members-escaped + staff-members-died + 1 ) = people-total)
   [
     stop
   ]
   tick
+end
+
+to watch-sample
+  if (watch-samples?)
+  [
+    if (empty? samples = false)
+    [
+      foreach samples
+      [
+        agent ->
+        ask agent
+        [
+          watch-me
+        ]
+      ]
+    ]
+  ]
+end
+to watch-sample-init
+  ifelse(watch-samples? = false)
+  [
+    set watch-samples? true
+    let sample-groups passengers with [safe? = false and dead? = false ] with [group-id > 0]
+    if (any? sample-groups)
+    [
+      set samples lput (one-of sample-groups) samples
+    ]
+
+    let sample-passengers passengers with [safe? = false and dead? = false ] with [group-id = 0]
+    if (any? sample-passengers)
+    [
+      set samples lput (one-of sample-passengers) samples
+    ]
+  ]
+  [
+    set watch-samples? false
+    reset-perspective
+  ]
 end
 
 to initialize-borders
@@ -95,7 +140,10 @@ set passengers-died 0
 set staff-members-escaped 0
 set staff-members-died 0
 set people-total (count passengers) + (count staff-members) + (count drivers)
-set extinguisherDist 20
+set fire-extinguisher-distance 20
+
+set watch-samples? false
+set samples []
 end
 
 to initialize-train
@@ -127,15 +175,15 @@ to initialize-train
     set accessible? true
   ]
 
-  ask patches with [(member? pxcor [-333 -332 -334 312 311 313]) and ((pycor < 50 and pycor > 8) or (pycor > -58 and pycor < -11))]
-  [
-    set accessible? false
-  ]
+  ;;ask patches with [(member? pxcor [-333 -332 -334 312 311 313]) and ((pycor < 50 and pycor > 8) or (pycor > -58 and pycor < -11))]
+  ;;[
+  ;; set accessible? false
+  ;;]
 
-  ask patches with [  (member? pxcor [-272 -271 -273 -205 -204 -206 -110 -109 -111 -77 -78 -76 57 56 58 89 88 90 184 183 185 252 251 253]) and ((pycor > -58 and pycor < -20) or (pycor < 51 and pycor > 21))]
-  [
-    set accessible? false
-  ]
+  ;;ask patches with [  (member? pxcor [-272 -271 -273 -205 -204 -206 -110 -109 -111 -77 -78 -76 57 56 58 89 88 90 184 183 185 252 251 253]) and ((pycor > -58 and pycor < -20) or (pycor < 51 and pycor > 21))]
+  ;;[
+  ;;  set accessible? false
+  ;;]
 end
 
 to initialize-relations
@@ -220,7 +268,7 @@ to initialize-driver
 end
 
 to initialize-fire
-  ask n-of fire-count patches with [pcolor = black or pcolor = white] with [pycor < 45 and pycor > -45 ]
+  ask n-of fire-count patches with [pcolor = black or pcolor = white] with [pycor < 45 and pycor > -45 ] with [pxcor < 450 and pxcor > -450]
   [
     sprout-fire-spots 1
     [
@@ -496,8 +544,7 @@ to move-to-exit
         forward 0.5
       ][
         right 90
-        set panic? true
-        set color red
+        update-panic-status
       ]
     ]
     [
@@ -525,8 +572,7 @@ to move-to-exit
         forward 0.5
       ][
         right 90
-        set panic? true
-        set color red
+        update-panic-status
       ]
     ]
     [
@@ -717,8 +763,10 @@ to decrease-fire
   [
     ask fire-spots-on staff-target
     [
-      set fire? false
       die
+    ]
+    ask staff-target [
+        set fire? false
     ]
   ]
 
@@ -733,23 +781,23 @@ to move-staff-members
   [
     if (not staff-safe?) [
       calme-passengers
-    let count-fire-spots (count fire-spots)
-    ifelse (any? fire-spots)
-    [
-      set-target-fire
-      face staff-target
+      let count-fire-spots (count fire-spots)
+      ifelse (any? fire-spots)
+      [
+        set-target-fire
+        face staff-target
 
-      if (distance staff-target > extinguisherDist)[
-        move-agent
+        if (distance staff-target > fire-extinguisher-distance)[
+          move-agent
+        ]
+        if (distance staff-target < fire-extinguisher-distance)[
+          decrease-fire
+        ]
       ]
-      if (distance staff-target < extinguisherDist)[
-        decrease-fire
-      ]
-    ]
-    [
-      ;;else statement
-      let passengers-in-train passengers with [safe? = false and dead? = false]
-      ifelse (any? passengers-in-train)
+      [
+        ;;else statement
+        let passengers-in-train passengers with [safe? = false and dead? = false]
+        ifelse (any? passengers-in-train)
         [
           let panic-passenger-in-train passengers-in-train with [panic? = true]
           if (any? panic-passenger-in-train)
@@ -765,8 +813,8 @@ to move-staff-members
           move-agent
           be-safe-staff
         ]
+      ]
     ]
-  ]
   ]
 end
 
@@ -832,8 +880,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 -600
 600
@@ -846,10 +894,10 @@ ticks
 30.0
 
 BUTTON
-22
-66
-139
-117
+10
+41
+127
+92
 setup
 setup
 NIL
@@ -863,10 +911,10 @@ NIL
 1
 
 BUTTON
-150
-66
-262
-116
+138
+41
+250
+91
 go
 go
 T
@@ -880,10 +928,10 @@ NIL
 1
 
 SLIDER
-57
-189
-229
-222
+37
+128
+209
+161
 passenger-count
 passenger-count
 0
@@ -895,10 +943,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-58
-238
-230
-271
+38
+177
+210
+210
 staff-count
 staff-count
 0
@@ -910,75 +958,75 @@ NIL
 HORIZONTAL
 
 SLIDER
-59
-285
-231
-318
+39
+224
+211
+257
 fire-count
 fire-count
 1
 10
-2.0
+4.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-59
-335
-231
-368
+39
+274
+211
+307
 panic-rate
 panic-rate
 0
 100
-0.0
+50.0
 5
 1
 %
 HORIZONTAL
 
 SLIDER
-58
-388
-234
-421
+38
+327
+214
+360
 probability-to-get-panic
 probability-to-get-panic
 0
 100
-0.0
+30.0
 5
 1
 %
 HORIZONTAL
 
 TEXTBOX
-111
-35
-261
-57
+99
+10
+249
+32
 Initialize
 18
 0.0
 1
 
 TEXTBOX
-97
-159
-247
-181
+77
+98
+227
+120
 Parameters
 18
 0.0
 1
 
 MONITOR
-467
-300
-547
-345
+720
+298
+800
+343
 NIL
 people-total
 0
@@ -986,10 +1034,10 @@ people-total
 11
 
 MONITOR
-717
-300
-821
-345
+970
+298
+1074
+343
 NIL
 passengers-died
 0
@@ -997,10 +1045,10 @@ passengers-died
 11
 
 MONITOR
-569
-300
-696
-345
+822
+298
+949
+343
 NIL
 passengers-escaped
 0
@@ -1008,10 +1056,10 @@ passengers-escaped
 11
 
 MONITOR
-1008
-300
-1129
-345
+1261
+298
+1382
+343
 NIL
 staff-members-died
 0
@@ -1019,10 +1067,10 @@ staff-members-died
 11
 
 MONITOR
-842
-300
-986
-345
+1095
+298
+1239
+343
 NIL
 staff-members-escaped
 0
@@ -1030,10 +1078,10 @@ staff-members-escaped
 11
 
 PLOT
-394
-366
-1224
-556
+647
+364
+1477
+554
 Total
 time
 totals
@@ -1050,20 +1098,20 @@ PENS
 "staff-members-escaped" 1.0 0 -14070903 true "" "plot staff-members-escaped"
 
 TEXTBOX
-728
-258
-878
-280
+981
+256
+1131
+278
 Simulation results
 18
 0.0
 1
 
 SLIDER
-59
-443
-234
-476
+39
+382
+214
+415
 relation-probability
 relation-probability
 0
@@ -1075,26 +1123,43 @@ NIL
 HORIZONTAL
 
 SWITCH
-61
-500
-232
-533
+41
+439
+212
+472
 show-relation-name?
 show-relation-name?
-0
+1
 1
 -1000
 
 SWITCH
-62
-548
-232
-581
+42
+487
+212
+520
 show-relation-link?
 show-relation-link?
-0
+1
 1
 -1000
+
+BUTTON
+47
+535
+195
+568
+Watch sample
+watch-sample-init
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
