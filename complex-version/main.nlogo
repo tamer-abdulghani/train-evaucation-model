@@ -504,6 +504,7 @@ to update-my-exit
     set my-exits-list exits-list
   ]
 end
+
 to move-passengers
   ask passengers with [safe? = false and dead? = false and panic? = false and in-relation? = false]
   [
@@ -887,7 +888,7 @@ to help-passengers-to-escape
   [
     if(target-exit = 0 or target-exit = "")
     [
-      set-staff-target-exist
+    set-staff-target-exist
     ]
     let staff-target-exit target-exit
     face staff-target-exit
@@ -913,7 +914,7 @@ to help-passengers-to-escape
       ]
     ]
     [
-      forward 1
+      forward 0.5
     ]
   ]
 end
@@ -1104,7 +1105,7 @@ staff-count
 staff-count
 0
 8
-4.0
+1.0
 1
 1
 NIL
@@ -1119,7 +1120,7 @@ fire-count
 fire-count
 1
 10
-6.0
+7.0
 1
 1
 NIL
@@ -1149,7 +1150,7 @@ probability-to-get-panic
 probability-to-get-panic
 0
 100
-0.0
+85.0
 5
 1
 %
@@ -1269,7 +1270,7 @@ relation-probability
 relation-probability
 0
 100
-20.0
+100.0
 5
 1
 NIL
@@ -1341,7 +1342,8 @@ true
 "" ""
 PENS
 "Fire" 1.0 0 -2674135 true "" "plot count fire-spots"
-"Total staff Health" 1.0 0 -13345367 true "" "plot sum [health] of staff-members"
+"Total Staff Health" 1.0 0 -13345367 true "" "plot sum [health] of staff-members"
+"Total Passengers Health" 1.0 0 -7500403 true "" "plot sum [health] of passengers"
 
 MONITOR
 1153
