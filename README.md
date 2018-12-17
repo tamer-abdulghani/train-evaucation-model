@@ -28,7 +28,8 @@ Passengers who are in-relation have the same group-id which helps to identify th
 At first, each passenger has his own target-exit which is set based on the distance to all exits (minimum distance = closest exit). This type of passengers does not have any relations with any other passengers, and by definition they are not panic.
 They start moving with clear and specific path to escape from the train. First, they leave their seats and move the main path, then they walk slowly and steady to the hall which lead to their target-exit. Once they are in the halls they move up/down towards the doors, then they get out of the train to the “cyan” area and they are considered as “safe” passengers and colored “green”.
 In case of being close to any fire or smoke spots, the health of passenger is decreased by 10, he might get panic based on “probability-to-get-panic” parameter and if so then they follow “panic” passengers’ behavior,  and he change his direction and target exit. If the health value is 0, then the passenger is dead. 
-3.1.2	Panic passengers’ behavior
+
+### Panic passengers’ behavior
 Similar to normal passengers, they are initialized at first with same default values except for (panic= true and color = red). 
 They start by moving randomly in the train (because they are stressed), and once they are close enough to one of target exits (in radius 30), they manage to get out of the train successfully. 
 They also have possibility to change moving direction if necessary (reaching a wall or close to a fire), and again their health is affected by fire.
